@@ -1,0 +1,29 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large Data Files (Do not upload to GitHub)
+*.csv
+*.json
+*.xlsx
+
+# AI Models and Embeddings
+# These are often too large for Git
+media_embeddings.pt
+*.bin
+*.pt
+*.pkl
+
+# VS Code Specific
+.vscode/
+
+# OS Specific
+.DS_Store
+Thumbs.db
