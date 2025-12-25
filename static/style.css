@@ -1,0 +1,171 @@
+:root {
+    --primary: #6200ee;
+    --accent: #03dac6;
+    --bg: #0f0f12;
+    --glass: rgba(255, 255, 255, 0.05);
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: white;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.header h1 { font-size: 3rem; margin-bottom: 10px; }
+
+/* Glassmorphism Search Bar */
+.search-container {
+    display: flex;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+input[type="text"] {
+    flex: 1; background: transparent; border: none;
+    color: white; padding: 15px; font-size: 1.1rem; outline: none;
+}
+
+/* Advanced Grid Layout */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 40px;
+}
+
+/* Loader */
+.loader {
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-left-color: #6200ee;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Media Cards */
+.card {
+    background: var(--glass);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover { transform: scale(1.05); background: rgba(255, 255, 255, 0.1); }
+
+.poster-container {
+    position: relative;
+    background: linear-gradient(135deg, #1e1e24 0%, #6200ee 100%); /* Purple vibe */
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Add a vinyl record icon or text as a backup */
+.poster-container::after {
+    content: "🎵";
+    font-size: 4rem;
+    opacity: 0.2;
+}
+
+.poster-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1; /* Sits on top of the icon */
+}
+
+/* Add a "loading" shimmer effect */
+@keyframes shimmer {
+    0% { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+}
+.loading {
+    background: #1a1a1e;
+    background-image: linear-gradient(to right, #1a1a1e 0%, #2a2a2e 20%, #1a1a1e 40%, #1a1a1e 100%);
+    background-repeat: no-repeat;
+    animation: shimmer 1.5s infinite linear;
+}
+
+.card-content { padding: 20px; flex-grow: 1; }
+
+.score-badge {
+    float: right;
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.type-tag {
+    font-size: 0.7rem;
+    background: var(--primary);
+    padding: 3px 8px;
+    border-radius: 5px;
+    text-transform: uppercase;
+}
+
+.popularity-meter {
+    height: 4px;
+    background: #333;
+    margin-top: 15px;
+    border-radius: 2px;
+}
+
+.popularity-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+/* discover button */
+.discover-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.discover-btn:hover {
+    background: #7b1fa2; /* Slightly lighter purple */
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(98, 0, 238, 0.4);
+}
+
+.filters {
+    margin-top: 10px;
+    padding: 0 10px;
+}
+
+.filter-label-row {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Modern styling for the range slider */
+input[type="range"] {
+    width: 200px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
