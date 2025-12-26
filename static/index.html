@@ -1,52 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
     <title>Media Discovery Engine</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="/static/style.css"
+    />
+  </head>
+  <body>
     <div class="header">
-        <h1>🔍 Media Discovery</h1>
-        <p>Search by mood, vibe, or concept</p>
+      <h1>🔍 Media Discovery</h1>
+      <p>Search by mood, vibe, or concept</p>
     </div>
 
     <div class="search-section">
-        <div class="search-container">
-            <input type="text" id="userInput" 
-                   placeholder="e.g. 'Smooth jazz for a rainy night' or 'Cyberpunk movies'..." 
-                   oninput="debouncedSearch()">
-            
-            <button onclick="runSearch()" class="discover-btn">Discover</button>
-        </div>
-        
-        <div class="filters">
-            <div class="filter-label-row">
-                <label>Min Popularity: <span id="popValue">0</span>%</label>
-            </div>
-            <input type="range" id="popFilter" min="0" max="100" value="0" 
-                   oninput="updatePopLabel(this.value)">
-        </div>
-    </div>
+      <div class="search-container">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="e.g. 'Smooth jazz for a rainy night'..."
+          oninput="debouncedSearch()"
+        />
+        <button
+          id="clearBtn"
+          onclick="clearSearch()"
+          style="
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0 10px;
+          "
+        >
+          ✕
+        </button>
+        <button
+          onclick="runSearch()"
+          class="discover-btn"
+        >
+          Discover
+        </button>
+      </div>
 
-    <div id="resultsList" class="results-grid"></div>
+      <div class="filters">
+        <div class="type-toggles">
+          <button
+            class="filter-btn active"
+            data-type="all"
+          >
+            All
+          </button>
+          <button
+            class="filter-btn"
+            data-type="movie"
+          >
+            Movies
+          </button>
+          <button
+            class="filter-btn"
+            data-type="music"
+          >
+            Music
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="results-container">
+      <h2
+        id="resultTitle"
+        style="
+          margin: 20px 0;
+          font-weight: 800;
+          color: var(--accent);
+        "
+      >
+        Trending Now
+      </h2>
+      <div
+        id="resultsList"
+        class="results-grid"
+      ></div>
+    </div>
+   
 
     <script>
-        // Simple helper for the slider label
-        function updatePopLabel(val) {
-            document.getElementById('popValue').innerText = val;
-        }
+      // Simple helper for the slider label
+      function updatePopLabel(val) {
+        document.getElementById(
+          "popValue"
+        ).innerText = val;
+      }
 
-        // Add 'Enter' key support for the search bar
-        document.getElementById("userInput").addEventListener("keypress", function(event) {
+      // Add 'Enter' key support for the search bar
+      document
+        .getElementById("userInput")
+        .addEventListener(
+          "keypress",
+          function (event) {
             if (event.key === "Enter") {
-                event.preventDefault();
-                runSearch();
+              event.preventDefault();
+              runSearch();
             }
-        });
+          }
+        );
     </script>
     <script src="/static/script.js"></script>
-</body>
+  </body>
 </html>

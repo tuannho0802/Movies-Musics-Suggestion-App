@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+
 class MediaResult(BaseModel):
     title: str
     type: str
@@ -8,8 +9,10 @@ class MediaResult(BaseModel):
     score: float
     genre: Optional[str] = None
     # Advanced: Add more metadata fields
-    popularity: Optional[int] = None 
+    popularity: Optional[int] = None
     image_url: Optional[str] = None
+    year: Optional[str] = None
+
 
 class SearchResponse(BaseModel):
     query: str
