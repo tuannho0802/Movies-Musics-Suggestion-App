@@ -18,7 +18,7 @@ engine = RecommendationEngine()
 
 @app.on_event("startup")
 async def startup_event():
-    print("\n" + "=" * 50 + "\n🚀 INITIALIZING CLEAN ENGINE\n" + "=" * 50)
+    print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE\n" + "=" * 50)
     data = DataLoader.load_media(
         "data/movies_metadata.csv",
         "data/TMDB_movie_dataset_v11.csv",
@@ -26,7 +26,9 @@ async def startup_event():
     )
     if not data.empty:
         engine.media_df = data
-        engine._prepare_embeddings()
+        if engine.embeddings is None:
+            print("🛠️ No embeddings found, building new ones...")
+            engine._prepare_embeddings()
 
         mov_c = len(data[data["type"] == "movie"])
         mus_c = len(data[data["type"] == "music"])
@@ -37,15 +39,22 @@ async def startup_event():
 
 
 @app.get("/trending")
-def get_trending():
+def get_trending(type: str = "all", limit: int = 15):
     if engine.media_df is None:
         return {"results": []}
 
-    # Pool top 500 items
-    pool = engine.media_df.sort_values("popularity", ascending=False).head(500)
+    # Define the pool of items to sample from based on the 'type' parameter
+    if type == "movie":
+        pool = engine.media_df[engine.media_df["type"] == "movie"].sort_values("popularity", ascending=False).head(250)
+    elif type == "music":
+        pool = engine.media_df[engine.media_df["type"] == "music"].sort_values("popularity", ascending=False).head(250)
+    else: # type == 'all'
+        movies = engine.media_df[engine.media_df["type"] == "movie"].sort_values("popularity", ascending=False).head(250)
+        music = engine.media_df[engine.media_df["type"] == "music"].sort_values("popularity", ascending=False).head(250)
+        pool = pd.concat([movies, music])
 
-    # Randomly pick 15 different items from the pool
-    sample = pool.sample(n=min(15, len(pool)))
+    # Randomly pick 'limit' different items from the pool
+    sample = pool.sample(n=min(limit, len(pool)))
 
     results = []
     for _, item in sample.iterrows():
@@ -58,11 +67,14 @@ def get_trending():
                 "genre": str(item["genre"]),
                 "popularity": int(round(float(item["popularity"]))),
                 "score": 1.0,
+                "image_url": str(item.get("image_url", "")),
             }
         )
+    
+    # Shuffle only if we are getting all types
+    if type == 'all':
+        random.shuffle(results)
 
-    # Shuffle the list so movies and music are mixed up
-    random.shuffle(results)
     return {"results": results}
 
 
@@ -80,6 +92,7 @@ def search_api(q: str, type: str = "all"):
                 "genre": str(item["genre"]),
                 "score": float(item["score"]),
                 "popularity": int(round(float(item.get("popularity", 0)))),
+                "image_url": str(item.get("image_url", "")),
             }
         )
     return {"query": q, "count": len(formatted), "results": formatted}

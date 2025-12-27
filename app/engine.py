@@ -9,6 +9,11 @@ class RecommendationEngine:
         self.media_df = None
         self.embeddings = None
         self.embeddings_path = "media_embeddings.pt"
+        if os.path.exists(self.embeddings_path):
+            print(f"✅ Pre-loaded embeddings found at: {self.embeddings_path}")
+            self.embeddings = torch.load(self.embeddings_path)
+        else:
+            print(f"❌ No pre-loaded embeddings found at: {self.embeddings_path}")
 
     def _prepare_embeddings(self):
         if self.media_df is None:
@@ -38,6 +43,7 @@ class RecommendationEngine:
                     ),  # Contains Year for movies, Artist for music
                     "popularity": float(item["popularity"]),
                     "score": round(float(hit["score"]), 2),
+                    "image_url": item.get("image_url", ""),
                 }
             )
 

@@ -102,7 +102,13 @@ class DataLoader:
             "movie",
         )
         s1 = build_subset(
-            music_path, {"title": "track_name", "popularity": "popularity"}, "music"
+            music_path,
+            {
+                "title": "track_name",
+                "popularity": "popularity",
+                "image_url": "album_cover_url",
+            },
+            "music",
         )
 
         combined = pd.concat([m1, m2, s1], ignore_index=True).sort_values(
