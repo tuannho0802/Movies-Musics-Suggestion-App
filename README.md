@@ -1,31 +1,38 @@
-# 🔍 Media Discovery Engine
+# 🎬🎵 Media Discovery Engine 🎵🎬
 
-A creative "Semantic Search" application that allows users to find movies and music based on **concepts, moods, and vibes** rather than just keywords. Built with Python, FastAPI, and Sentence-Transformers.
+A unique application that allows users to find movies and music based on **concepts, moods, and vibes**, moving beyond traditional keyword searching. Powered by Python, FastAPI, and advanced NLP techniques.
 
-## 🚀 How it Works
+## ✨ Features
 
-Unlike traditional search engines that look for exact word matches, this app uses **Natural Language Processing (NLP)**. It converts text descriptions into high-dimensional vectors (embeddings) and calculates the mathematical similarity between your query and the media library.
+*   **Semantic Search:** Find media using natural language queries based on meaning, not just exact keywords.
+*   **Movie & Music Discovery:** Search for both movies and music within a unified interface.
+*   **Trending Views:** Explore curated lists of trending movies and music.
+*   **"See More" Functionality:** Load more content with a click in trending views.
+*   **Infinite Scroll & Lazy Loading:** Seamlessly load more content as you scroll, ensuring a smooth user experience.
+*   **Hide/Show Search on Scroll:** The search bar and filters intelligently hide on scroll down and reappear on scroll up.
+*   **UI Enhancements:** Optimized description lengths, right-aligned "See More" buttons with emojis, and consistent grid layouts for both movie and music lists.
 
-> **Example:** Searching for "Space adventure" will find _Interstellar_ even if the word "adventure" isn't in the description.
+## 🚀 Technologies Used
 
-## 🛠️ Tech Stack
+*   **Backend:** [FastAPI](https://fastapi.tiangolo.com/) (Python)
+*   **AI/NLP:** Sentence-Transformers (`all-MiniLM-L6-v2` model) for semantic embeddings.
+*   **Data Handling:** Pandas & PyTorch
+*   **Frontend:** Vanilla HTML5, CSS, and JavaScript (using Fetch API)
+*   **APIs:** TMDB API (for movie posters and metadata), iTunes API (for music artwork)
 
-- **Backend:** [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **AI Model:** `all-MiniLM-L6-v2` (via Sentence-Transformers)
-- **Data Handling:** Pandas & PyTorch
-- **Frontend:** Vanilla HTML5 / JavaScript (Fetch API)
+## 📚 Datasets
 
-## 📦 Installation & Setup
+This application utilizes the following datasets:
+*   **Spotify Tracks Dataset:** [Kaggle Link](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset)
+*   **IMDb & TMDB Movie Metadata:** [Kaggle Link](https://www.kaggle.com/datasets/shubhamchandra235/imdb-and-tmdb-movie-metadata-big-dataset-1m?resource=download)
+*   **TMDB Movies Dataset (2023):** [Kaggle Link](https://www.kaggle.com/datasets/asaniczka/tmdb-movies-dataset-2023-930k-movies)
+
+## 🛠️ Installation & Setup
 
 ### 1. Clone the repository
 
 ```bash
   git clone https://github.com/tuannho0802/Movies-Musics-Suggestion-App.git
-```
-
-Go to the project directory
-
-```bash
   cd Movies-Musics-Suggestion-App
 ```
 
@@ -35,50 +42,61 @@ Go to the project directory
 python -m venv venv
 ```
 
-Windows:
+### 3. Activate Virtual Environment
 
-```
+**Windows:**
+```bash
 .\venv\Scripts\activate
 ```
 
-Mac/Linux:
-
-```
+**Mac/Linux:**
+```bash
 source venv/bin/activate
 ```
 
-### 3. Install Dependencies
+### 4. Install Dependencies
 
 ```bash
-pip install fastapi uvicorn sentence-transformers pandas torch
+pip install fastapi uvicorn sentence-transformers pandas torch python-dotenv
 ```
 
-### 4. Prepare Data _(You can search these on Kaggle)_
+### 5. Environment Variables
 
-Ensure you have the following files in the **root directory**:
+Create a `.env` file in the root directory based on `.env.example` and add your **TMDB API Key**:
 
-- _movies_metadata.csv_ (From TMDB/Kaggle)
+```
+TMDB_API_KEY=YOUR_TMDB_API_KEY_HERE
+```
+*(Replace `YOUR_TMDB_API_KEY_HERE` with your actual key obtained from [The Movie Database API](https://www.themoviedb.org/documentation/api/key))*
 
-- _music_data.csv_ (Spotify Tracks Dataset)
+## 🚀 Running the Application
 
-## 🖥️ Usage
-
-### 1. Start the API server:
+### 1. Start the Backend API Server:
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
+*(This assumes your FastAPI app instance is named `app` in `app/main.py`)*
 
-### 2. Open the App: Simply open index.html in your preferred web browser.
+### 2. Open the Frontend:
 
-### 3. API Documentation: Once the server is running, visit *http://127.0.0.1:8000/docs* to test the API endpoints interactively.
+Simply open the `static/index.html` file in your web browser.
 
-### 🌟 Future Improvements
+### 3. API Documentation:
 
-[ ] **Vector Database:** Integrate ChromaDB for faster searching of millions of rows.
+Once the server is running, you can access the interactive API documentation at:
+`http://127.0.0.1:8000/docs`
 
-[ ] **Visuals:** Fetch real movie posters and album art via external APIs.
+## 🤔 How it Works
 
-[ ] **Hybrid Search:** Combine semantic search with metadata filters (Year, Genre, Artist).
+This application leverages Natural Language Processing (NLP) to go beyond simple keyword matching. It converts text descriptions into vector embeddings and calculates similarity scores between your query and the media library. This allows for more intuitive searching based on concepts, moods, and vibes.
 
-[ ] **Deployment:** Host the API on Render/Heroku and the frontend on GitHub Pages.
+## 🌟 Future Improvements
+
+*   **Vector Database:** Integrate ChromaDB for faster searching with large datasets.
+*   **Hybrid Search:** Combine semantic search with metadata filters (Year, Genre, Artist).
+*   **Deployment:** Host the API on platforms like Render/Heroku and the frontend on GitHub Pages.
+
+## 🐞 Bug Report / Feedback
+
+If you encounter any issues or have suggestions, please use the `/bug` command or report them.
