@@ -38,36 +38,77 @@ window.onload = async () => {
   loadTrending("music", "trendingMusic");
 };
 
-async function renderCards(results, container, isTrending, append = false) {
+let currentPlayingAudio = null; // Global variable to track the currently playing audio
+let audioCounter = 0; // To generate unique IDs for audio elements
+
+async function renderCards(
+  results,
+  container,
+  isTrending,
+  append = false
+) {
   if (!append) {
     container.innerHTML = "";
   }
-  
+
   // Remove loader if it exists
-  const loader = container.querySelector('.loader');
-  if(loader) loader.remove();
+  const loader =
+    container.querySelector(".loader");
+  if (loader) loader.remove();
 
   if (!results || results.length === 0) {
     if (!append) {
-      container.innerHTML = "<p>No matches found.</p>";
+      container.innerHTML =
+        "<p>No matches found.</p>";
     }
     noMoreData = true; // Stop fetching if no results
     return;
   }
 
   for (const item of results) {
-    const imageUrl = await fetchImage(item.title, item.type);
+    const imageUrl = await fetchImage(
+      item.title,
+      item.type
+    );
     const genreDisplay = item.genre || "Media";
 
-    const metaLabel = item.year && item.year !== "" ? `(${item.year})` : "";
+    const metaLabel =
+      item.year && item.year !== ""
+        ? `(${item.year})`
+        : "";
 
     const badge = isTrending
       ? `<span class="type-tag">${item.type}</span>`
-      : `<span class="score-badge">${Math.round(item.score * 100)}% Match</span>`;
-    
-    const truncatedDescription = item.description && item.description.length > 260
-      ? item.description.substring(0, 260) + '...'
-      : item.description || '';
+      : `<span class="score-badge">${Math.round(
+          item.score * 100
+        )}% Match</span>`;
+
+    const truncatedDescription =
+      item.description &&
+      item.description.length > 260
+        ? item.description.substring(0, 260) +
+          "..."
+        : item.description || "";
+
+    let mediaHtml = "";
+    if (
+      item.type === "movie" &&
+      item.trailer_url
+    ) {
+      mediaHtml = `<a href="${item.trailer_url}" target="_blank" class="play-trailer-btn">▶ Play Trailer</a>`;
+    } else if (
+      item.type === "music" &&
+      item.preview_url
+    ) {
+      audioCounter++;
+      const audioId = `audio-${audioCounter}`;
+      mediaHtml = `
+            <div class="audio-player-container">
+                <audio src="${item.preview_url}" id="${audioId}" class="audio-preview-element"></audio>
+                <button class="custom-play-btn" data-audio-id="${audioId}">▶ Play Preview</button>
+            </div>
+        `;
+    }
 
     container.innerHTML += `
       <div class="card">
@@ -78,12 +119,136 @@ async function renderCards(results, container, isTrending, append = false) {
           ${badge}
           <h3>${item.title} <span class="year-label">${metaLabel}</span></h3>
           <div class="genre-badge">${genreDisplay}</div>
-          <p class="description-text">${truncatedDescription}</p>
+                    <div class="description-and-media">
+                      <p class="description-text">${truncatedDescription}</p>
+                      ${mediaHtml}
+                    </div>
         </div>
       </div>
     `;
   }
+  // Attach event listeners after all cards are rendered
+  attachAudioPlayerListeners();
 }
+
+// Update this function in your script.js
+function attachAudioPlayerListeners() {
+  document
+    .querySelectorAll(".custom-play-btn")
+    .forEach((button) => {
+      // We use an async function to handle the Play Promise
+      button.onclick = async (event) => {
+        const audioId = button.dataset.audioId;
+        const audio =
+          document.getElementById(audioId);
+
+        if (!audio) return;
+
+        // 1. Pause existing audio safely
+        if (
+          currentPlayingAudio &&
+          currentPlayingAudio !== audio
+        ) {
+          currentPlayingAudio.pause();
+          const prevButton =
+            document.querySelector(
+              `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
+            );
+          if (prevButton)
+            prevButton.textContent =
+              "▶ Play Preview";
+        }
+
+        // 2. Toggle Play/Pause
+        if (audio.paused) {
+          try {
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              button.textContent =
+                "⌛ Loading...";
+              await playPromise; // Wait for playback to actually start
+              button.textContent =
+                "⏸ Pause Preview";
+              currentPlayingAudio = audio;
+            }
+          } catch (error) {
+            if (error.name === "AbortError") {
+              console.log(
+                "Playback interrupted safely."
+              );
+            } else {
+              console.error(
+                "Playback failed:",
+                error
+              );
+            }
+          }
+        } else {
+          audio.pause();
+          button.textContent = "▶ Play Preview";
+          currentPlayingAudio = null;
+        }
+
+        audio.onended = () => {
+          button.textContent = "▶ Play Preview";
+          currentPlayingAudio = null;
+        };
+      };
+    });
+}
+
+function attachAudioPlayerListeners() {
+  document
+    .querySelectorAll(".custom-play-btn")
+    .forEach((button) => {
+      button.onclick = (event) => {
+        const audioId = button.dataset.audioId;
+        const audio =
+          document.getElementById(audioId);
+
+        if (!audio) return;
+
+        // If another audio is playing, pause it
+        if (
+          currentPlayingAudio &&
+          currentPlayingAudio !== audio
+        ) {
+          currentPlayingAudio.pause();
+          const prevButton =
+            document.querySelector(
+              `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
+            );
+          if (prevButton) {
+            prevButton.textContent =
+              "▶ Play Preview";
+          }
+        }
+
+        if (audio.paused) {
+          audio.play();
+          button.textContent =
+            "⏸ Pause Preview";
+          currentPlayingAudio = audio;
+        } else {
+          audio.pause();
+          button.textContent = "▶ Play Preview";
+          currentPlayingAudio = null;
+        }
+
+        audio.onended = () => {
+          button.textContent = "▶ Play Preview";
+          currentPlayingAudio = null;
+        };
+      };
+    });
+}
+
+// Ensure listeners are re-attached when new content is loaded via infinite scroll
+const originalLoadMoreData = loadMoreData;
+loadMoreData = async () => {
+  await originalLoadMoreData();
+  attachAudioPlayerListeners();
+};
 
 async function fetchImage(title, type) {
   const cacheKey = `img_v4_${title.replaceAll(/\s+/g, "_").toLowerCase()}`;

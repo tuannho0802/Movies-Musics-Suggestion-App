@@ -35,12 +35,20 @@ class DataLoader:
                 return pd.DataFrame()
 
             clean = pd.DataFrame()
-            # Map columns safely
             for target, source in col_map.items():
                 if source in df_raw.columns:
                     clean[target] = df_raw[source]
                 else:
                     clean[target] = ""
+
+            # --- IMAGE LOGIC ---
+            if type_label == "movie":
+                # TMDB datasets usually use 'poster_path'
+                if "poster_path" in df_raw.columns:
+                    clean["image_url"] = "https://image.tmdb.org/t/p/w500" + df_raw[
+                        "poster_path"
+                    ].astype(str)
+            # Music images are mapped via col_map in the s1 call below
 
             # Genre logic
             if "track_genre" in df_raw.columns:
@@ -56,13 +64,10 @@ class DataLoader:
                     if "artists" in df_raw.columns
                     else "Unknown"
                 )
-
                 descriptions = []
                 for i in range(len(df_raw)):
                     r = df_raw.iloc[i]
-                    v = []
-                    if r.get("danceability", 0) > 0.6:
-                        v.append("danceable")
+                    v = ["danceable"] if r.get("danceability", 0) > 0.6 else []
                     if r.get("energy", 0) > 0.7:
                         v.append("energetic")
                     v_str = " & ".join(v) if v else "unique"
@@ -72,18 +77,21 @@ class DataLoader:
 
                 clean["description"] = descriptions
                 clean["year"] = artist
-                # Create dedupe key strings
-                titles_norm = clean["title"].apply(normalize)
-                artists_norm = artist.apply(normalize)
-                clean["dedupe_key"] = titles_norm + artists_norm
+                clean["dedupe_key"] = clean["title"].apply(normalize) + artist.apply(
+                    normalize
+                )
             else:
                 clean["description"] = clean["description"].fillna("A feature film.")
-                yr = df_raw["release_date"].astype(str).str.extract(r"(\d{4})")
-                yr = yr[0].fillna("2000") if not yr.empty else "2000"
-                clean["year"] = yr
-                # Create dedupe key strings
-                titles_norm = clean["title"].apply(normalize)
-                clean["dedupe_key"] = titles_norm + yr.astype(str)
+                yr = (
+                    df_raw["release_date"]
+                    .astype(str)
+                    .str.extract(r"(\d{4})")
+                    .fillna("2000")
+                )
+                clean["year"] = yr[0]
+                clean["dedupe_key"] = clean["title"].apply(normalize) + yr[0].astype(
+                    str
+                )
 
             clean["type"] = type_label
             clean["popularity"] = pd.to_numeric(
@@ -111,12 +119,8 @@ class DataLoader:
             "music",
         )
 
-        combined = pd.concat([m1, m2, s1], ignore_index=True).sort_values(
-            "popularity", ascending=False
-        )
-        # Final strict deduplication
+        combined = pd.concat([m1, m2, s1], ignore_index=True)
         final = combined.drop_duplicates(subset=["dedupe_key"], keep="first").drop(
             columns=["dedupe_key"]
         )
-
         return final.reset_index(drop=True)

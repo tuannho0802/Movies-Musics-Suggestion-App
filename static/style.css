@@ -150,7 +150,20 @@ input[type="text"] {
 .card-content {
   padding: 20px;
   flex-grow: 1;
+  display: flex; /* Added for flex layout */
+  flex-direction: column; /* Stack children vertically */
+  justify-content: space-between; /* Pushes content to top and bottom */
+  min-height: 180px; /* Added: Ensure consistent height for the content area */
 }
+
+.description-and-media {
+    flex-grow: 1; /* Allow this section to take available space */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Pushes the media elements to the bottom */
+    margin-top: 10px; /* Space between genre and description/media */
+}
+
 
 /* Make the score stand out */
 .score-badge {
@@ -272,6 +285,11 @@ input[type="range"] {
     color: #ccc;
     margin-top: 8px;
     line-height: 1.4;
+    overflow: hidden; /* Added: Hide overflow text */
+    text-overflow: ellipsis; /* Added: Add ellipsis for overflow text */
+    display: -webkit-box; /* Added: For multi-line ellipsis */
+    -webkit-line-clamp: 4; /* Added: Limit to 4 lines */
+    -webkit-box-orient: vertical; /* Added: For multi-line ellipsis */
 }
 
 .search-results-container {
@@ -329,4 +347,54 @@ input[type="range"] {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
   width: 100%; /* Ensure the grid takes full width */
+}
+
+.play-trailer-btn {
+    display: inline-block;
+    margin-top: 10px; /* Add some space below the description */
+    background: var(--accent);
+    color: var(--bg);
+    padding: 8px 15px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.play-trailer-btn:hover {
+    background: #00eddb; /* Slightly lighter accent */
+}
+
+.audio-player-container {
+    width: 100%;
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+  
+    border-radius: 5px;
+}
+
+.audio-preview-element {
+    display: none; /* Hide the default audio element */
+}
+
+.custom-play-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    flex-grow: 1; /* Allow button to expand */
+    text-align: center;
+}
+
+.custom-play-btn:hover {
+    background: #00eddb;
 }
