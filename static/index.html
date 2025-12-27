@@ -75,45 +75,28 @@
         </div>
       </div>
     </div>
-    <div class="results-container">
-      <h2
-        id="resultTitle"
-        style="
-          margin: 20px 0;
-          font-weight: 800;
-          color: var(--accent);
-        "
-      >
-        Trending Now
-      </h2>
-      <div
-        id="resultsList"
-        class="results-grid"
-      ></div>
+    <div class="trending-section">
+      <div class="trending-category">
+        <div class="trending-header">
+          <h2>Trending Movies</h2>
+        </div>
+        <div id="trendingMovies" class="results-grid"></div>
+        <button class="see-more-btn" data-type="movie">See more ➡️</button>
+      </div>
+      <div class="trending-category">
+        <div class="trending-header">
+          <h2>Trending Music</h2>
+        </div>
+        <div id="trendingMusic" class="results-grid"></div>
+        <button class="see-more-btn" data-type="music">See more ➡️</button>
+      </div>
     </div>
-   
 
-    <script>
-      // Simple helper for the slider label
-      function updatePopLabel(val) {
-        document.getElementById(
-          "popValue"
-        ).innerText = val;
-      }
+    <div class="search-results-container">
+      <h2 id="searchResultsTitle" style="margin: 20px 0; font-weight: 800; color: var(--accent);"></h2>
+      <div id="searchResultsList" class="results-grid"></div>
+    </div>
 
-      // Add 'Enter' key support for the search bar
-      document
-        .getElementById("userInput")
-        .addEventListener(
-          "keypress",
-          function (event) {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              runSearch();
-            }
-          }
-        );
-    </script>
     <script src="/static/script.js"></script>
   </body>
 </html>

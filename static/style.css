@@ -19,6 +19,19 @@ body {
   margin-bottom: 10px;
 }
 
+.search-section {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 20px 0;
+  z-index: 10;
+  transition: top 0.3s ease-in-out;
+}
+
+.search-section.hidden {
+  top: -200px; /* Adjust this value to be more than the height of the search section */
+}
+
 /* Glassmorphism Search Bar */
 .search-container {
   display: flex;
@@ -261,11 +274,59 @@ input[type="range"] {
     line-height: 1.4;
 }
 
-/* Ensure the card title stays in one row if possible */
-.card-content h3 {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 5px;
+.search-results-container {
+  display: none; /* Initially hidden */
 }
 
+/* Trending Section Styles */
+.trending-section {
+  margin-top: 40px;
+}
+
+.trending-category {
+  margin-bottom: 50px;
+  display: flex; /* Make it a flex container */
+  flex-direction: column; /* Stack children vertically */
+  align-items: flex-end; /* Align items to the right */
+}
+
+.trending-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%; /* Ensure header takes full width */
+}
+
+.trending-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.see-more-btn {
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  color: white;
+  padding: 12px 25px 12px 25px; /* Added right padding for the emoji */
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+  /* Removed display: block and margin: auto */
+  margin-top: 30px; /* Keep top margin */
+  box-shadow: 0 4px 15px rgba(98, 0, 238, 0.4);
+}
+
+.see-more-btn:hover {
+  background: #7b1fa2;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(98, 0, 238, 0.6);
+}
+
+/* Adjust card size for trending sections */
+.trending-category .results-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  width: 100%; /* Ensure the grid takes full width */
+}
