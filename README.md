@@ -78,9 +78,10 @@ uvicorn app.main:app --reload
 ```
 *(This assumes your FastAPI app instance is named `app` in `app/main.py`)*
 
-### 2. Open the Frontend:
+### 2. Open the App:
 
-Simply open the `static/index.html` file in your web browser.
+Run the server using `uvicorn app.main:app --reload`, then access the application in your browser at:
+`http://127.0.0.1:8000/`
 
 ### 3. API Documentation:
 
