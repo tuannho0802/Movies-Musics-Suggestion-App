@@ -31,8 +31,9 @@ class DataLoader:
         def build_subset(path, col_map, type_label):
             try:
                 df_raw = pd.read_csv(path, low_memory=False).head(8000)
-            except:
-                return pd.DataFrame()
+            except Exception as e:
+                print(f"Error reading CSV from {path}: {e}")
+                return pd.DataFrame(columns=["dedupe_key"]) # Return with dedupe_key column for consistency
 
             clean = pd.DataFrame()
             for target, source in col_map.items():
@@ -122,6 +123,11 @@ class DataLoader:
         )
 
         combined = pd.concat([m1, m2, s1], ignore_index=True)
+        
+        if combined.empty:
+            print("Warning: Combined DataFrame is empty after concatenation. No data loaded.")
+            return combined
+
         final = combined.drop_duplicates(subset=["dedupe_key"], keep="first").drop(
             columns=["dedupe_key"]
         )

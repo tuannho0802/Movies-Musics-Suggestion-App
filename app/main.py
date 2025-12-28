@@ -3,7 +3,8 @@ import random
 import pandas as pd
 import httpx
 import math
-import asyncio  # New import for speed
+import asyncio
+import shutil # Import shutil
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -51,24 +52,30 @@ async def startup_event():
         # Check if files already exist locally, otherwise download
         if not os.path.exists(local_path1):
             print(f"Downloading movies_metadata.csv to {local_path1}")
-            path1 = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
-            os.replace(path1, local_path1) # Move the downloaded file to our cache dir
+            path1_temp = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
+            shutil.copyfile(path1_temp, local_path1) # Copy the downloaded file
+            os.remove(path1_temp) # Remove the temporary file
+            path1 = local_path1
         else:
             print(f"Using cached movies_metadata.csv from {local_path1}")
             path1 = local_path1
 
         if not os.path.exists(local_path2):
             print(f"Downloading TMDB_movie_dataset_v11.csv to {local_path2}")
-            path2 = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
-            os.replace(path2, local_path2)
+            path2_temp = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
+            shutil.copyfile(path2_temp, local_path2)
+            os.remove(path2_temp)
+            path2 = local_path2
         else:
             print(f"Using cached TMDB_movie_dataset_v11.csv from {local_path2}")
             path2 = local_path2
 
         if not os.path.exists(local_path3):
             print(f"Downloading music_data.csv to {local_path3}")
-            path3 = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
-            os.replace(path3, local_path3)
+            path3_temp = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
+            shutil.copyfile(path3_temp, local_path3)
+            os.remove(path3_temp)
+            path3 = local_path3
         else:
             print(f"Using cached music_data.csv from {local_path3}")
             path3 = local_path3
