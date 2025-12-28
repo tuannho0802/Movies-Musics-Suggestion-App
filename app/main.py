@@ -12,6 +12,7 @@ from .database import DataLoader
 from .engine import RecommendationEngine
 from .models import SearchResponse
 from .youtube_tool import YoutubeToolset
+from huggingface_hub import hf_hub_download
 
 app = FastAPI()
 app.add_middleware(
@@ -28,27 +29,34 @@ def clean_val(val, default=""):
         return default
     return str(val)
 
+
+
 @app.on_event("startup")
 async def startup_event():
     print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE\n" + "=" * 50)
-    data = DataLoader.load_media(
-        "data/movies_metadata.csv",
-        "data/TMDB_movie_dataset_v11.csv",
-        "data/music_data.csv",
-    )
-    if not data.empty:
-        engine.media_df = data
-        if engine.embeddings is None:
-            print("🛠️ No embeddings found, building new ones...")
-            engine._prepare_embeddings()
+    
+    # Define the repository where your data is stored
+    DATASET_REPO = "tuannho080213/media_data"
+    
+    try:
+        # Download files from Hugging Face Hub to local temporary paths
+        path1 = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
+        path2 = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
+        path3 = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
 
-        mov_c = len(data[data["type"] == "movie"])
-        mus_c = len(data[data["type"] == "music"])
-        print(f"✅ SUCCESS: Loaded {mov_c} Movies & {mus_c} Songs.")
-    else:
-        print("❌ ERROR: Data injection failed.")
+        # Pass these downloaded paths to your DataLoader
+        data = DataLoader.load_media(path1, path2, path3)
+        
+        if not data.empty:
+            engine.media_df = data
+            if engine.embeddings is None:
+                print("🛠️ No embeddings found, building new ones...")
+                engine._prepare_embeddings()
+            print(f"✅ SUCCESS: Loaded {len(data)} items.")
+    except Exception as e:
+        print(f"❌ ERROR: Failed to fetch data from Hub: {e}")
+    
     print("=" * 50 + "\n")
-
 
 # --- THE OPTIMIZATION WORKER ---
 async def get_details_parallel(client, item):
