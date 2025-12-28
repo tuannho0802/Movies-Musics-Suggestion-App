@@ -1,3 +1,16 @@
+---
+title: Movie and Music Suggestion App
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# Movie & Music Suggestion App
+Your project description goes here...
+
 # 🎬🎵 Media Discovery Engine 🎵🎬
 
 A unique application that allows users to find movies and music based on **concepts, moods, and vibes**, moving beyond traditional keyword searching. Powered by Python, FastAPI, and advanced NLP techniques.
