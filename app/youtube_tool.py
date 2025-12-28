@@ -63,21 +63,28 @@ class YoutubeToolset:
     @lru_cache(maxsize=2048)
     def get_music_preview_url(self, song_title, artist_name=""):
         """
-        Searches for a music preview URL on iTunes API.
+        Searches for a music preview URL on iTunes API with fallback queries.
         """
-        search_term = f"{song_title} {artist_name}"
-        try:
-            res = requests.get(
-                f"https://itunes.apple.com/search?term={search_term}&entity=song&limit=1",
-                timeout=3.0,
-            )
-            res.raise_for_status()
-            data = res.json()
-            if data.get("results"):
-                return data["results"][0].get("previewUrl", "")
-        except Exception as e:
-            print(f"Error fetching iTunes preview: {e}")
-            return ""
+        search_terms = []
+        if artist_name:
+            search_terms.append(f"{song_title} {artist_name}")
+        search_terms.append(song_title) # Always try with just the song title as a fallback
+
+        for term in search_terms:
+            try:
+                res = requests.get(
+                    f"https://itunes.apple.com/search?term={term}&entity=song&limit=1",
+                    timeout=3.0,
+                )
+                res.raise_for_status()
+                data = res.json()
+                if data.get("results"):
+                    preview_url = data["results"][0].get("previewUrl")
+                    if preview_url:
+                        return preview_url
+            except Exception as e:
+                print(f"Error fetching iTunes preview for '{term}': {e}")
+        return ""
 
     @lru_cache(maxsize=2048)
     def get_movie_image_url(self, movie_title):
@@ -103,21 +110,26 @@ class YoutubeToolset:
         return ""
 
     @lru_cache(maxsize=2048)
-    def get_music_image_url(self, song_title):
+    def get_music_image_url(self, song_title, artist_name=""): # Added artist_name parameter
         """
-        Searches iTunes for music artwork image URL.
+        Searches iTunes for music artwork image URL with fallback queries.
         """
-        try:
-            res = requests.get(
-                f"https://itunes.apple.com/search?term={song_title}&entity=song&limit=1",
-                timeout=3.0,
-            )
-            res.raise_for_status()
-            data = res.json()
-            if data.get("results") and data["results"][0].get("artworkUrl100"):
-                # Return a higher resolution image
-                return data["results"][0]["artworkUrl100"].replace("100x100bb", "600x600bb")
-        except Exception as e:
-            print(f"Error fetching iTunes music image: {e}")
-            return ""
+        search_terms = []
+        if artist_name:
+            search_terms.append(f"{song_title} {artist_name}")
+        search_terms.append(song_title) # Always try with just the song title as a fallback
+
+        for term in search_terms:
+            try:
+                res = requests.get(
+                    f"https://itunes.apple.com/search?term={term}&entity=song&limit=1",
+                    timeout=3.0,
+                )
+                res.raise_for_status()
+                data = res.json()
+                if data.get("results") and data["results"][0].get("artworkUrl100"):
+                    # Return a higher resolution image
+                    return data["results"][0]["artworkUrl100"].replace("100x100bb", "600x600bb")
+            except Exception as e:
+                print(f"Error fetching iTunes music image for '{term}': {e}")
         return ""

@@ -75,7 +75,7 @@ async def get_details_parallel(client, item):
             )
         elif item_dict["type"] == "music":
             item_dict["image_url"] = await asyncio.to_thread(
-                youtube_tool.get_music_image_url, item_dict["title"]
+                youtube_tool.get_music_image_url, item_dict["title"], item_dict["year"]
             )
 
     # 2. Fix Movie Trailers
