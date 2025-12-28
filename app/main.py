@@ -63,8 +63,20 @@ async def get_details_parallel(client, item):
         "genre": clean_val(item.get("genre")),
         "popularity": int(round(float(item.get("popularity", 0)))),
         "score": float(item.get("score", 1.0)),
+        # Initial image_url from the dataframe/dict
         "image_url": clean_val(item.get("image_url", "")),
     }
+
+    # If image_url is still empty, try to fetch it from external sources
+    if not item_dict["image_url"]:
+        if item_dict["type"] == "movie":
+            item_dict["image_url"] = await asyncio.to_thread(
+                youtube_tool.get_movie_image_url, item_dict["title"]
+            )
+        elif item_dict["type"] == "music":
+            item_dict["image_url"] = await asyncio.to_thread(
+                youtube_tool.get_music_image_url, item_dict["title"]
+            )
 
     # 2. Fix Movie Trailers
     if item_dict["type"] == "movie":

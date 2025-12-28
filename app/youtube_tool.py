@@ -1,3 +1,4 @@
+import os
 import requests
 from functools import lru_cache
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -77,3 +78,46 @@ class YoutubeToolset:
         except Exception as e:
             print(f"Error fetching iTunes preview: {e}")
             return ""
+
+    @lru_cache(maxsize=2048)
+    def get_movie_image_url(self, movie_title):
+        """
+        Searches TMDB for a movie poster image URL.
+        """
+        try:
+            # Need to get TMDB API key from env
+            tmdb_api_key = os.getenv("TMDB_API_KEY")
+            if not tmdb_api_key:
+                return ""
+            res = requests.get(
+                f"https://api.themoviedb.org/3/search/movie?api_key={tmdb_api_key}&query={movie_title}",
+                timeout=3.0,
+            )
+            res.raise_for_status()
+            data = res.json()
+            if data.get("results") and data["results"][0].get("poster_path"):
+                return f"https://image.tmdb.org/t/p/w500{data['results'][0]['poster_path']}"
+        except Exception as e:
+            print(f"Error fetching TMDB movie image: {e}")
+            return ""
+        return ""
+
+    @lru_cache(maxsize=2048)
+    def get_music_image_url(self, song_title):
+        """
+        Searches iTunes for music artwork image URL.
+        """
+        try:
+            res = requests.get(
+                f"https://itunes.apple.com/search?term={song_title}&entity=song&limit=1",
+                timeout=3.0,
+            )
+            res.raise_for_status()
+            data = res.json()
+            if data.get("results") and data["results"][0].get("artworkUrl100"):
+                # Return a higher resolution image
+                return data["results"][0]["artworkUrl100"].replace("100x100bb", "600x600bb")
+        except Exception as e:
+            print(f"Error fetching iTunes music image: {e}")
+            return ""
+        return ""

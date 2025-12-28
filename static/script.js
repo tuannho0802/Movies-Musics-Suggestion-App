@@ -67,8 +67,7 @@ async function renderCards(
 
   for (const item of results) {
     const imageUrl = await fetchImage(
-      item.title,
-      item.type
+      item.image_url, item.title
     );
     const genreDisplay = item.genre || "Media";
 
@@ -211,36 +210,16 @@ function attachAudioPlayerListeners() {
   });
 }
 
-async function fetchImage(title, type) {
+async function fetchImage(item_image_url, title) { // item_image_url is the image URL provided by the backend
   const cacheKey = `img_v4_${title.replaceAll(/\s+/g, "_").toLowerCase()}`;
   const cached = localStorage.getItem(cacheKey);
   if (cached) return cached;
 
-  try {
-    if (type === "movie" && CONFIG.TMDB_API_KEY) {
-      const res = await fetch(
-        `https://api.themoviedb.org/3/search/movie?api_key=${
-          CONFIG.TMDB_API_KEY
-        }&query=${encodeURIComponent(title)}`
-      );
-      const data = await res.json();
-      if (data.results?.[0]?.poster_path) {
-        const url = `https://image.tmdb.org/t/p/w500${data.results[0].poster_path}`;
-        localStorage.setItem(cacheKey, url);
-        return url;
-      }
-    } else {
-      const res = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(title)}&entity=song&limit=1`
-      );
-      const data = await res.json();
-      if (data.results?.[0]?.artworkUrl100) {
-        const url = data.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
-        localStorage.setItem(cacheKey, url);
-        return url;
-      }
-    }
-  } catch (e) {}
+  if (item_image_url) {
+    localStorage.setItem(cacheKey, item_image_url);
+    return item_image_url;
+  }
+
   return fallbackImage;
 }
 
