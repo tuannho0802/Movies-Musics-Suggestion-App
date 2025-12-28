@@ -37,14 +37,43 @@ async def startup_event():
     
     # Define the repository where your data is stored
     DATASET_REPO = "tuannho080213/media_data"
-    
-    try:
-        # Download files from Hugging Face Hub to local temporary paths
-        path1 = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
-        path2 = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
-        path3 = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
+    DATA_CACHE_DIR = "data_cache" # Define a local cache directory
 
-        # Pass these downloaded paths to your DataLoader
+    # Ensure the cache directory exists
+    os.makedirs(DATA_CACHE_DIR, exist_ok=True)
+    
+    # Define local paths for the datasets
+    local_path1 = os.path.join(DATA_CACHE_DIR, "movies_metadata.csv")
+    local_path2 = os.path.join(DATA_CACHE_DIR, "TMDB_movie_dataset_v11.csv")
+    local_path3 = os.path.join(DATA_CACHE_DIR, "music_data.csv")
+
+    try:
+        # Check if files already exist locally, otherwise download
+        if not os.path.exists(local_path1):
+            print(f"Downloading movies_metadata.csv to {local_path1}")
+            path1 = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
+            os.replace(path1, local_path1) # Move the downloaded file to our cache dir
+        else:
+            print(f"Using cached movies_metadata.csv from {local_path1}")
+            path1 = local_path1
+
+        if not os.path.exists(local_path2):
+            print(f"Downloading TMDB_movie_dataset_v11.csv to {local_path2}")
+            path2 = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
+            os.replace(path2, local_path2)
+        else:
+            print(f"Using cached TMDB_movie_dataset_v11.csv from {local_path2}")
+            path2 = local_path2
+
+        if not os.path.exists(local_path3):
+            print(f"Downloading music_data.csv to {local_path3}")
+            path3 = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
+            os.replace(path3, local_path3)
+        else:
+            print(f"Using cached music_data.csv from {local_path3}")
+            path3 = local_path3
+
+        # Pass these (potentially cached) paths to your DataLoader
         data = DataLoader.load_media(path1, path2, path3)
         
         if not data.empty:

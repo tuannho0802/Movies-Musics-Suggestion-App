@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 # Expose the port that FastAPI runs on
-EXPOSE 8000
+EXPOSE 7860
 
 # Run the Uvicorn server
 # The --host 0.0.0.0 makes the server accessible from outside the container
