@@ -1,0 +1,11 @@
+fastapi
+pandas
+torch
+sentence-transformers
+youtube-transcript-api
+youtube-search
+httpx
+uvicorn
+python-dotenv
+cachetools
+requests

@@ -2,7 +2,8 @@ import os
 import random
 import pandas as pd
 import httpx
-import math  # Added to check for NaN
+import math
+import asyncio  # New import for speed
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -19,16 +20,13 @@ app.add_middleware(
 engine = RecommendationEngine()
 youtube_tool = YoutubeToolset()
 
-
-# HELPER: Ensure values are JSON compliant (No NaNs)
+# HELPER: Remains exactly as your original
 def clean_val(val, default=""):
     if val is None:
         return default
-    # Check if it's a float NaN
     if isinstance(val, float) and math.isnan(val):
         return default
     return str(val)
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -52,157 +50,136 @@ async def startup_event():
     print("=" * 50 + "\n")
 
 
+# --- THE OPTIMIZATION WORKER ---
+async def get_details_parallel(client, item):
+    """Processes a single item. Used by asyncio.gather to run many at once."""
+    item_dict = {
+        "title": clean_val(item["title"]),
+        "year": clean_val(item["year"]),
+        "type": clean_val(item["type"]),
+        "description": clean_val(item["description"]),
+        "genre": clean_val(item["genre"]),
+        "popularity": (
+            int(round(float(item["popularity"])))
+            if not pd.isna(item["popularity"])
+            else 0
+        ),
+        "score": float(item.get("score", 1.0)),
+        "image_url": clean_val(item.get("image_url", "")),
+    }
+
+    trailer_url = clean_val(item.get("trailer_url", ""))
+    preview_url = clean_val(item.get("preview_url", ""))
+
+    if item_dict["type"] == "movie":
+        if not trailer_url:
+            # RUN IN THREAD: prevents the YouTube search from freezing the app
+            trailer_url = await asyncio.to_thread(
+                youtube_tool.find_trailer_url, item_dict["title"], item_dict["year"]
+            )
+            if trailer_url:
+                _update_media_df_with_url(
+                    "movie",
+                    item_dict["title"],
+                    item_dict["year"],
+                    "trailer_url",
+                    trailer_url,
+                )
+        item_dict["trailer_url"] = clean_val(trailer_url)
+
+    
+    # SPEED FIX: Preview URLs are now fetched on-demand by the client
+    # We no longer fetch them here to speed up initial load
+    item_dict["preview_url"] = ""
+
+    return item_dict
+
+@app.get("/preview")
+async def get_preview_url(title: str, artist: str):
+    """New endpoint to fetch a music preview URL on-demand."""
+    preview_url = await asyncio.to_thread(
+        youtube_tool.get_music_preview_url, title, artist
+    )
+    if preview_url:
+        # While we're here, let's update our main dataframe for the next time
+        _update_media_df_with_url("music", title, artist, "preview_url", preview_url)
+        return {"url": preview_url}
+    return {"url": None}
+
+
+from cachetools import TTLCache
+# --- Caching Setup ---
+# Cache for search endpoint, items expire after 5 minutes
+search_cache = TTLCache(maxsize=200, ttl=300)
+
 @app.get("/trending")
 async def get_trending(type: str = "all", limit: int = 15):
     if engine.media_df is None:
         return {"results": []}
 
+    # Your original pooling logic
     if type == "movie":
-        pool = engine.media_df[engine.media_df["type"] == "movie"].sort_values("popularity", ascending=False).head(250)
+        pool = (
+            engine.media_df[engine.media_df["type"] == "movie"]
+            .sort_values("popularity", ascending=False)
+            .head(250)
+        )
     elif type == "music":
-        pool = engine.media_df[engine.media_df["type"] == "music"].sort_values("popularity", ascending=False).head(250)
+        pool = (
+            engine.media_df[engine.media_df["type"] == "music"]
+            .sort_values("popularity", ascending=False)
+            .head(250)
+        )
     else:
-        movies = engine.media_df[engine.media_df["type"] == "movie"].sort_values("popularity", ascending=False).head(250)
-        music = engine.media_df[engine.media_df["type"] == "music"].sort_values("popularity", ascending=False).head(250)
+        movies = (
+            engine.media_df[engine.media_df["type"] == "movie"]
+            .sort_values("popularity", ascending=False)
+            .head(250)
+        )
+        music = (
+            engine.media_df[engine.media_df["type"] == "music"]
+            .sort_values("popularity", ascending=False)
+            .head(250)
+        )
         pool = pd.concat([movies, music])
 
     sample = pool.sample(n=min(limit, len(pool)))
 
-    results = []
+    # SPEED FIX: Start all fetches at the same time
     async with httpx.AsyncClient() as client:
-        for _, item in sample.iterrows():
-            # Apply clean_val to everything to prevent NaN errors
-            item_dict = {
-                "title": clean_val(item["title"]),
-                "year": clean_val(item["year"]),
-                "type": clean_val(item["type"]),
-                "description": clean_val(item["description"]),
-                "genre": clean_val(item["genre"]),
-                "popularity": (
-                    int(round(float(item["popularity"])))
-                    if not pd.isna(item["popularity"])
-                    else 0
-                ),
-                "score": 1.0,
-                "image_url": clean_val(item.get("image_url", "")),
-            }
+        tasks = [get_details_parallel(client, item) for _, item in sample.iterrows()]
+        results = await asyncio.gather(*tasks)
 
-            trailer_url = clean_val(item.get("trailer_url", ""))
-            preview_url = clean_val(item.get("preview_url", ""))
-
-            if item_dict["type"] == "movie":
-                if not trailer_url:
-                    trailer_url = youtube_tool.find_trailer_url(
-                        item_dict["title"], item_dict["year"]
-                    )
-                    if trailer_url:
-                        _update_media_df_with_url(
-                            "movie",
-                            item_dict["title"],
-                            item_dict["year"],
-                            "trailer_url",
-                            trailer_url,
-                        )
-                item_dict["trailer_url"] = clean_val(trailer_url)
-
-            elif item_dict["type"] == "music":
-                if not preview_url:
-                    try:
-                        itunes_res = await client.get(
-                            f"https://itunes.apple.com/search?term={item_dict['title']}&entity=song&limit=1",
-                            timeout=5.0,
-                        )
-                        if itunes_res.status_code == 200:
-                            itunes_data = itunes_res.json()
-                            if itunes_data["results"] and itunes_data["results"][0].get(
-                                "previewUrl"
-                            ):
-                                preview_url = itunes_data["results"][0]["previewUrl"]
-                                _update_media_df_with_url(
-                                    "music",
-                                    item_dict["title"],
-                                    item_dict["year"],
-                                    "preview_url",
-                                    preview_url,
-                                )
-                    except Exception:
-                        preview_url = ""
-                item_dict["preview_url"] = clean_val(preview_url)
-
-            results.append(item_dict)
-
-    if type == 'all':
-        random.shuffle(results)
-
+    # Shuffle results for all types to ensure randomness
+    random.shuffle(results)
+    
     return {"results": results}
 
 
 @app.get("/search", response_model=SearchResponse)
 async def search_api(q: str, type: str = "all"):
+    cache_key = f"{q}-{type}"
+    if cache_key in search_cache:
+        print("✅ SEARCH: Returning cached results.")
+        return search_cache[cache_key]
+        
     raw = engine.search_advanced(query=q, media_type=type)
-    formatted = []
+
+    # SPEED FIX: Start all searches at once
     async with httpx.AsyncClient() as client:
-        for item in raw:
-            item_dict = {
-                "title": clean_val(item["title"]),
-                "year": clean_val(item.get("year", "")),
-                "type": clean_val(item["type"]),
-                "description": clean_val(item["description"]),
-                "genre": clean_val(item["genre"]),
-                "score": float(item["score"]),
-                "popularity": int(round(float(item.get("popularity", 0)))),
-                "image_url": clean_val(item.get("image_url", "")),
-            }
+        tasks = [get_details_parallel(client, item) for item in raw]
+        formatted = await asyncio.gather(*tasks)
 
-            trailer_url = clean_val(item.get("trailer_url", ""))
-            preview_url = clean_val(item.get("preview_url", ""))
-
-            if item_dict["type"] == "movie":
-                if not trailer_url:
-                    trailer_url = youtube_tool.find_trailer_url(
-                        item_dict["title"], item_dict["year"]
-                    )
-                    if trailer_url:
-                        _update_media_df_with_url(
-                            "movie",
-                            item_dict["title"],
-                            item_dict["year"],
-                            "trailer_url",
-                            trailer_url,
-                        )
-                item_dict["trailer_url"] = clean_val(trailer_url)
-            elif item_dict["type"] == "music":
-                if not preview_url:
-                    try:
-                        itunes_res = await client.get(
-                            f"https://itunes.apple.com/search?term={item_dict['title']}&entity=song&limit=1",
-                            timeout=5.0,
-                        )
-                        if itunes_res.status_code == 200:
-                            itunes_data = itunes_res.json()
-                            if itunes_data["results"] and itunes_data["results"][0].get(
-                                "previewUrl"
-                            ):
-                                preview_url = itunes_data["results"][0]["previewUrl"]
-                                _update_media_df_with_url(
-                                    "music",
-                                    item_dict["title"],
-                                    item_dict["year"],
-                                    "preview_url",
-                                    preview_url,
-                                )
-                    except Exception:
-                        preview_url = ""
-                item_dict["preview_url"] = clean_val(preview_url)
-            formatted.append(item_dict)
-    return {"query": q, "count": len(formatted), "results": formatted}
-
+    response = {"query": q, "count": len(formatted), "results": formatted}
+    search_cache[cache_key] = response  # Store in cache
+    print("✅ SEARCH: Cached new results.")
+    return response
 
 @app.get("/config")
 def get_config():
     return {"TMDB_API_KEY": os.getenv("TMDB_API_KEY", "")}
 
-
+# Your original update logic
 def _update_media_df_with_url(media_type, title, year, url_type, url):
     if engine.media_df is not None:
         url = clean_val(url)
@@ -211,7 +188,6 @@ def _update_media_df_with_url(media_type, title, year, url_type, url):
         ].index
         if not idx.empty:
             engine.media_df.loc[idx, url_type] = url
-
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

@@ -8,9 +8,20 @@ A unique application that allows users to find movies and music based on **conce
 *   **Movie & Music Discovery:** Search for both movies and music within a unified interface.
 *   **Trending Views:** Explore curated lists of trending movies and music.
 *   **"See More" Functionality:** Load more content with a click in trending views.
-*   **Infinite Scroll & Lazy Loading:** Seamlessly load more content as you scroll, ensuring a smooth user experience.
+*   **Infinite Scroll & Lazy Loading:** Seamlessly load more content as you scroll, with on-demand loading of music previews for a faster experience.
 *   **Hide/Show Search on Scroll:** The search bar and filters intelligently hide on scroll down and reappear on scroll up.
 *   **UI Enhancements:** Optimized description lengths, right-aligned "See More" buttons with emojis, and consistent grid layouts for both movie and music lists.
+*   **Performance Caching:** The application uses a combination of client-side and server-side caching to provide a faster and more responsive experience.
+
+## 🚀 Latest Enhancements (December 2025)
+
+*   **Drastic Performance Overhaul:** Implemented a series of optimizations to significantly improve application responsiveness and reduce loading times.
+*   **Lazy Loading for Music Previews:** Music preview URLs are now fetched on-demand when the user clicks the "Play Preview" button. This prevents a large number of initial network requests and makes the UI load much faster.
+*   **Comprehensive Caching Strategy:**
+    *   **Backend:** Caching has been added for YouTube trailer searches, iTunes music preview searches, and the `/search` API endpoint to reduce redundant API calls.
+    *   **Frontend:** Movie and music poster images are cached in the browser's local storage to speed up subsequent loads.
+*   **Dynamic Trending Results:** Caching has been removed from the trending endpoint to ensure that a new, random set of results is displayed on each page load.
+*   **Bug Fixes:** Resolved several critical bugs, including issues with audio playback, a backend startup error (`IndentationError`), and a UI rendering bug that was preventing media from being displayed.
 
 ## 🚀 Technologies Used
 
@@ -57,7 +68,7 @@ source venv/bin/activate
 ### 4. Install Dependencies
 
 ```bash
-pip install fastapi uvicorn sentence-transformers pandas torch python-dotenv
+pip install -r requirements.txt
 ```
 
 ### 5. Environment Variables

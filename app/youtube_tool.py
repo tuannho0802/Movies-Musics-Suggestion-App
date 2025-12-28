@@ -1,3 +1,5 @@
+import requests
+from functools import lru_cache
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_search import YoutubeSearch
 
@@ -27,6 +29,7 @@ class YoutubeToolset:
             print(f"Error getting transcript for video {video_id}: {e}")
             return None
 
+    @lru_cache(maxsize=1024)
     def find_trailer_url(self, movie_title, year=None):
         """
         Searches for a movie trailer on YouTube.
@@ -57,3 +60,24 @@ class YoutubeToolset:
             return f"https://www.youtube.com/watch?v={results[0]['id']}"
             
         return None
+
+    @lru_cache(maxsize=2048)
+    def get_music_preview_url(self, song_title, artist_name=""):
+        """
+        Searches for a music preview URL on iTunes.
+        Caches results to avoid repeated lookups.
+        """
+        search_term = f"{song_title} {artist_name}"
+        try:
+            res = requests.get(
+                f"https://itunes.apple.com/search?term={search_term}&entity=song&limit=1",
+                timeout=3.0,
+            )
+            res.raise_for_status()
+            data = res.json()
+            if data.get("results"):
+                return data["results"][0].get("previewUrl", "")
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching from iTunes: {e}")
+            return ""
+        return ""

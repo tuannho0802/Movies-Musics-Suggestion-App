@@ -96,16 +96,19 @@ async function renderCards(
       item.trailer_url
     ) {
       mediaHtml = `<a href="${item.trailer_url}" target="_blank" class="play-trailer-btn">▶ Play Trailer</a>`;
-    } else if (
-      item.type === "music" &&
-      item.preview_url
-    ) {
+    } else if (item.type === "music") {
+      // LAZY LOADING: We don't add the src here anymore.
+      // We add data attributes to the button to fetch the URL on-demand.
       audioCounter++;
       const audioId = `audio-${audioCounter}`;
       mediaHtml = `
             <div class="audio-player-container">
-                <audio src="${item.preview_url}" id="${audioId}" class="audio-preview-element"></audio>
-                <button class="custom-play-btn" data-audio-id="${audioId}">▶ Play Preview</button>
+                <button class="custom-play-btn" 
+                        data-audio-id="${audioId}" 
+                        data-title="${item.title}" 
+                        data-artist="${item.year}">
+                    ▶ Play Preview
+                </button>
             </div>
         `;
     }
@@ -131,124 +134,81 @@ async function renderCards(
   attachAudioPlayerListeners();
 }
 
-// Update this function in your script.js
 function attachAudioPlayerListeners() {
-  document
-    .querySelectorAll(".custom-play-btn")
-    .forEach((button) => {
-      // We use an async function to handle the Play Promise
-      button.onclick = async (event) => {
-        const audioId = button.dataset.audioId;
-        const audio =
-          document.getElementById(audioId);
+  document.querySelectorAll(".custom-play-btn").forEach((button) => {
+    button.onclick = async (event) => {
+      // Add a loading guard to prevent multiple clicks
+      if (button.textContent.includes("Loading")) {
+        return;
+      }
 
-        if (!audio) return;
+      const audioId = button.dataset.audioId;
+      let audio = document.getElementById(audioId);
 
-        // 1. Pause existing audio safely
-        if (
-          currentPlayingAudio &&
-          currentPlayingAudio !== audio
-        ) {
-          currentPlayingAudio.pause();
-          const prevButton =
-            document.querySelector(
-              `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
-            );
-          if (prevButton)
-            prevButton.textContent =
-              "▶ Play Preview";
-        }
+      // --- Pause any other playing audio ---
+      if (currentPlayingAudio && currentPlayingAudio.id !== audioId) {
+        currentPlayingAudio.pause();
+        const prevButton = document.querySelector(
+          `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
+        );
+        if (prevButton) prevButton.textContent = "▶ Play Preview";
+      }
 
-        // 2. Toggle Play/Pause
-        if (audio.paused) {
-          try {
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-              button.textContent =
-                "⌛ Loading...";
-              await playPromise; // Wait for playback to actually start
-              button.textContent =
-                "⏸ Pause Preview";
-              currentPlayingAudio = audio;
-            }
-          } catch (error) {
-            if (error.name === "AbortError") {
-              console.log(
-                "Playback interrupted safely."
-              );
-            } else {
-              console.error(
-                "Playback failed:",
-                error
-              );
-            }
-          }
-        } else {
-          audio.pause();
-          button.textContent = "▶ Play Preview";
-          currentPlayingAudio = null;
-        }
-
-        audio.onended = () => {
-          button.textContent = "▶ Play Preview";
-          currentPlayingAudio = null;
-        };
-      };
-    });
-}
-
-function attachAudioPlayerListeners() {
-  document
-    .querySelectorAll(".custom-play-btn")
-    .forEach((button) => {
-      button.onclick = (event) => {
-        const audioId = button.dataset.audioId;
-        const audio =
-          document.getElementById(audioId);
-
-        if (!audio) return;
-
-        // If another audio is playing, pause it
-        if (
-          currentPlayingAudio &&
-          currentPlayingAudio !== audio
-        ) {
-          currentPlayingAudio.pause();
-          const prevButton =
-            document.querySelector(
-              `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
-            );
-          if (prevButton) {
-            prevButton.textContent =
-              "▶ Play Preview";
-          }
-        }
-
-        if (audio.paused) {
-          audio.play();
-          button.textContent =
-            "⏸ Pause Preview";
+      // --- Handle the clicked button's audio ---
+      if (audio && !audio.paused) {
+        // If it's already playing, pause it
+        audio.pause();
+        button.textContent = "▶ Play Preview";
+        currentPlayingAudio = null;
+      } else if (audio && audio.paused) {
+        // If it's paused, play it
+        try {
+          await audio.play();
+          button.textContent = "⏸ Pause Preview";
           currentPlayingAudio = audio;
-        } else {
-          audio.pause();
-          button.textContent = "▶ Play Preview";
-          currentPlayingAudio = null;
+        } catch (e) {
+          console.error("Playback failed:", e);
         }
+      } else {
+        // If there's no audio element yet, create and play it
+        button.textContent = "⌛ Loading...";
+        try {
+          const title = button.dataset.title;
+          const artist = button.dataset.artist;
+          const res = await fetch(
+            `/preview?title=${encodeURIComponent(
+              title
+            )}&artist=${encodeURIComponent(artist)}`
+          );
+          const data = await res.json();
 
-        audio.onended = () => {
-          button.textContent = "▶ Play Preview";
-          currentPlayingAudio = null;
-        };
-      };
-    });
+          if (data.url) {
+            audio = new Audio(data.url);
+            audio.id = audioId;
+            // Append it to the container so it's part of the DOM
+            button.parentElement.appendChild(audio);
+
+            await audio.play();
+            button.textContent = "⏸ Pause Preview";
+            currentPlayingAudio = audio;
+
+            audio.onended = () => {
+              button.textContent = "▶ Play Preview";
+              currentPlayingAudio = null;
+            };
+          } else {
+            button.textContent = "🚫 Preview N/A";
+            button.disabled = true;
+          }
+        } catch (error) {
+          console.error("Failed to fetch or play preview:", error);
+          button.textContent = "⚠️ Error";
+          button.disabled = true;
+        }
+      }
+    };
+  });
 }
-
-// Ensure listeners are re-attached when new content is loaded via infinite scroll
-const originalLoadMoreData = loadMoreData;
-loadMoreData = async () => {
-  await originalLoadMoreData();
-  attachAudioPlayerListeners();
-};
 
 async function fetchImage(title, type) {
   const cacheKey = `img_v4_${title.replaceAll(/\s+/g, "_").toLowerCase()}`;
@@ -451,9 +411,14 @@ function debouncedSearch() {
   }, 800);
 }
 
-document.getElementById("userInput").addEventListener("keypress", function(event) {
-    if (event.key === "Enter") {
+document
+  .getElementById("userInput")
+  .addEventListener(
+    "keypress",
+    function (event) {
+      if (event.key === "Enter") {
         event.preventDefault();
         runSearch();
+      }
     }
-});
+  );
