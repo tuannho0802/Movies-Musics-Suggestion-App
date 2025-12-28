@@ -91,11 +91,12 @@ async function renderCards(
         : item.description || "";
 
     let mediaHtml = "";
-    if (
-      item.type === "movie" &&
-      item.trailer_url
-    ) {
-      mediaHtml = `<a href="${item.trailer_url}" target="_blank" class="play-trailer-btn">▶ Play Trailer</a>`;
+    if (item.type === "movie") {
+      if (item.trailer_url) {
+        mediaHtml = `<a href="${item.trailer_url}" target="_blank" class="play-trailer-btn">▶ Play Trailer</a>`;
+      } else {
+        mediaHtml = `<button class="play-trailer-btn disabled" disabled>🚫 Trailer N/A</button>`;
+      }
     } else if (item.type === "music") {
       // LAZY LOADING: We don't add the src here anymore.
       // We add data attributes to the button to fetch the URL on-demand.

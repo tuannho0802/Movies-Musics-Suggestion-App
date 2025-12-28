@@ -7,7 +7,7 @@ class YoutubeToolset:
     def search_youtube(self, query):
         """
         Searches YouTube for videos based on a query.
-        Returns a list of dictionaries with video details (id, title, long_desc, channel, duration, views, publish_time, url, image, thumbnails).
+        Returns a list of dictionaries with video details.
         """
         try:
             results = YoutubeSearch(query, max_results=5).to_dict()
@@ -17,10 +17,7 @@ class YoutubeToolset:
             return []
 
     def get_video_transcript(self, video_id):
-        """
-        Retrieves the transcript of a YouTube video.
-        Returns a string containing the full transcript.
-        """
+        """Retrieves the transcript of a YouTube video."""
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
             transcript = " ".join([item["text"] for item in transcript_list])
@@ -32,11 +29,11 @@ class YoutubeToolset:
     @lru_cache(maxsize=1024)
     def find_trailer_url(self, movie_title, year=None):
         """
-        Searches for a movie trailer on YouTube.
-        Prioritizes official trailers and includes the year in the search query if provided.
-        Returns the URL of the most relevant trailer found, or None if not found.
+        Searches for a movie trailer on YouTube with multiple fallback levels.
+        The lru_cache ensures we don't search the same movie twice in one session.
         """
-        search_query = f"{movie_title} official trailer"
+        # Broaden the search query slightly to get better results
+        search_query = f"{movie_title} trailer"
         if year:
             search_query += f" {year}"
 
@@ -45,27 +42,27 @@ class YoutubeToolset:
         if not results:
             return None
 
-        # Look for the most relevant result
+        # Level 1: Look for "Official" and "Trailer" in the title (Best Match)
         for result in results:
-            if "trailer" in result["title"].lower() and "official" in result["title"].lower():
+            title_lower = result["title"].lower()
+            if "trailer" in title_lower and "official" in title_lower:
                 return f"https://www.youtube.com/watch?v={result['id']}"
-        
-        # If no "official trailer" found, return the first one that seems like a trailer
+
+        # Level 2: Look for just "Trailer"
         for result in results:
             if "trailer" in result["title"].lower():
                 return f"https://www.youtube.com/watch?v={result['id']}"
 
-        # Otherwise, just return the first video
+        # Level 3: Fallback - Return the first result found so the button works
         if results:
             return f"https://www.youtube.com/watch?v={results[0]['id']}"
-            
+
         return None
 
     @lru_cache(maxsize=2048)
     def get_music_preview_url(self, song_title, artist_name=""):
         """
-        Searches for a music preview URL on iTunes.
-        Caches results to avoid repeated lookups.
+        Searches for a music preview URL on iTunes API.
         """
         search_term = f"{song_title} {artist_name}"
         try:
@@ -77,7 +74,6 @@ class YoutubeToolset:
             data = res.json()
             if data.get("results"):
                 return data["results"][0].get("previewUrl", "")
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching from iTunes: {e}")
+        except Exception as e:
+            print(f"Error fetching iTunes preview: {e}")
             return ""
-        return ""

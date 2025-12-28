@@ -12,6 +12,7 @@ class MediaResult(BaseModel):
     popularity: Optional[int] = None
     image_url: Optional[str] = None
     year: Optional[str] = None
+    trailer_url: Optional[str] = None  # Added trailer_url
 
 
 class SearchResponse(BaseModel):

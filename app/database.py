@@ -55,6 +55,8 @@ class DataLoader:
                 clean["genre"] = df_raw["track_genre"].apply(extract_genres)
             elif "genres" in df_raw.columns:
                 clean["genre"] = df_raw["genres"].apply(extract_genres)
+            elif "genres_list" in df_raw.columns:  # Added check for genres_list
+                clean["genre"] = df_raw["genres_list"].apply(extract_genres)
             else:
                 clean["genre"] = "Media"
 

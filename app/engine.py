@@ -22,29 +22,35 @@ class RecommendationEngine:
         self.embeddings = self.model.encode(descriptions, convert_to_tensor=True, show_progress_bar=True)
         torch.save(self.embeddings, self.embeddings_path)
 
-    def search_advanced(self, query, media_type="all"):
+    def search_advanced(self, query, media_type="all", page=1, page_size=12):
         query_embedding = self.model.encode(query, convert_to_tensor=True)
-        hits = util.semantic_search(query_embedding, self.embeddings, top_k=40)
 
-        results = []
-        for hit in hits[0]:
-            item = self.media_df.iloc[hit["corpus_id"]]
-            if media_type != "all" and item["type"] != media_type:
-                continue
+        if media_type != "all":
+            subset_df = self.media_df[self.media_df["type"] == media_type]
+            indices = subset_df.index.tolist()
+            if not indices:
+                return pd.DataFrame()
+            subset_embeddings = self.embeddings[indices]
+            hits = util.semantic_search(query_embedding, subset_embeddings, top_k=min(100, len(indices)))
+            
+            # Map hit indices back to original dataframe indices
+            original_indices = [indices[hit['corpus_id']] for hit in hits[0]]
+            scores = [hit['score'] for hit in hits[0]]
+            
+            # Create a DataFrame of the results with their scores
+            results_df = self.media_df.loc[original_indices].copy()
+            results_df["score"] = scores
 
-            results.append(
-                {
-                    "title": item["title"],
-                    "type": item["type"],
-                    "description": item["description"],
-                    "genre": item["genre"],
-                    "year": str(
-                        item.get("year", "")
-                    ),  # Contains Year for movies, Artist for music
-                    "popularity": float(item["popularity"]),
-                    "score": round(float(hit["score"]), 2),
-                    "image_url": item.get("image_url", ""),
-                }
-            )
-
-        return sorted(results, key=lambda x: x["score"], reverse=True)[:12]
+        else:
+            hits = util.semantic_search(query_embedding, self.embeddings, top_k=100)
+            indices = [hit['corpus_id'] for hit in hits[0]]
+            scores = [hit['score'] for hit in hits[0]]
+            results_df = self.media_df.loc[indices].copy()
+            results_df["score"] = scores
+        
+        # Sort by score and then paginate
+        sorted_df = results_df.sort_values(by="score", ascending=False)
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        
+        return sorted_df.iloc[start_index:end_index]

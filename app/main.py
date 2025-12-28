@@ -52,45 +52,37 @@ async def startup_event():
 
 # --- THE OPTIMIZATION WORKER ---
 async def get_details_parallel(client, item):
-    """Processes a single item. Used by asyncio.gather to run many at once."""
+    """Processes a single item (pd.Series) and ensures all URLs are present."""
+
+    # 1. Start with the base data
     item_dict = {
-        "title": clean_val(item["title"]),
-        "year": clean_val(item["year"]),
-        "type": clean_val(item["type"]),
-        "description": clean_val(item["description"]),
-        "genre": clean_val(item["genre"]),
-        "popularity": (
-            int(round(float(item["popularity"])))
-            if not pd.isna(item["popularity"])
-            else 0
-        ),
+        "title": clean_val(item.get("title")),
+        "year": clean_val(item.get("year")),
+        "type": clean_val(item.get("type")),
+        "description": clean_val(item.get("description")),
+        "genre": clean_val(item.get("genre")),
+        "popularity": int(round(float(item.get("popularity", 0)))),
         "score": float(item.get("score", 1.0)),
         "image_url": clean_val(item.get("image_url", "")),
     }
 
-    trailer_url = clean_val(item.get("trailer_url", ""))
-    preview_url = clean_val(item.get("preview_url", ""))
-
+    # 2. Fix Movie Trailers
     if item_dict["type"] == "movie":
+        # Check if URL already exists in the item
+        trailer_url = clean_val(item.get("trailer_url", ""))
+
         if not trailer_url:
-            # RUN IN THREAD: prevents the YouTube search from freezing the app
+            # Search YouTube if missing (this function is cached)
             trailer_url = await asyncio.to_thread(
                 youtube_tool.find_trailer_url, item_dict["title"], item_dict["year"]
             )
-            if trailer_url:
-                _update_media_df_with_url(
-                    "movie",
-                    item_dict["title"],
-                    item_dict["year"],
-                    "trailer_url",
-                    trailer_url,
-                )
+        
+        # This is the final URL for the response
         item_dict["trailer_url"] = clean_val(trailer_url)
 
-    
-    # SPEED FIX: Preview URLs are now fetched on-demand by the client
-    # We no longer fetch them here to speed up initial load
-    item_dict["preview_url"] = ""
+    # 3. Handle Music Previews (On-demand via /preview endpoint)
+    if item_dict["type"] == "music":
+        item_dict["preview_url"] = ""
 
     return item_dict
 
@@ -101,79 +93,51 @@ async def get_preview_url(title: str, artist: str):
         youtube_tool.get_music_preview_url, title, artist
     )
     if preview_url:
-        # While we're here, let's update our main dataframe for the next time
         _update_media_df_with_url("music", title, artist, "preview_url", preview_url)
         return {"url": preview_url}
     return {"url": None}
 
 
-from cachetools import TTLCache
-# --- Caching Setup ---
-# Cache for search endpoint, items expire after 5 minutes
-search_cache = TTLCache(maxsize=200, ttl=300)
+# --- API Endpoints ---
+
 
 @app.get("/trending")
-async def get_trending(type: str = "all", limit: int = 15):
+async def get_trending(type: str = "all", limit: int = 15, page: int = 1):
     if engine.media_df is None:
         return {"results": []}
 
-    # Your original pooling logic
     if type == "movie":
-        pool = (
-            engine.media_df[engine.media_df["type"] == "movie"]
-            .sort_values("popularity", ascending=False)
-            .head(250)
-        )
+        pool = engine.media_df[engine.media_df["type"] == "movie"]
     elif type == "music":
-        pool = (
-            engine.media_df[engine.media_df["type"] == "music"]
-            .sort_values("popularity", ascending=False)
-            .head(250)
-        )
+        pool = engine.media_df[engine.media_df["type"] == "music"]
     else:
-        movies = (
-            engine.media_df[engine.media_df["type"] == "movie"]
-            .sort_values("popularity", ascending=False)
-            .head(250)
-        )
-        music = (
-            engine.media_df[engine.media_df["type"] == "music"]
-            .sort_values("popularity", ascending=False)
-            .head(250)
-        )
-        pool = pd.concat([movies, music])
+        pool = engine.media_df
 
-    sample = pool.sample(n=min(limit, len(pool)))
+    sample = pool.nlargest(250, "popularity").sample(n=min(limit, len(pool)))
 
-    # SPEED FIX: Start all fetches at the same time
     async with httpx.AsyncClient() as client:
         tasks = [get_details_parallel(client, item) for _, item in sample.iterrows()]
         results = await asyncio.gather(*tasks)
 
-    # Shuffle results for all types to ensure randomness
     random.shuffle(results)
-    
     return {"results": results}
 
 
 @app.get("/search", response_model=SearchResponse)
-async def search_api(q: str, type: str = "all"):
-    cache_key = f"{q}-{type}"
-    if cache_key in search_cache:
-        print("✅ SEARCH: Returning cached results.")
-        return search_cache[cache_key]
-        
-    raw = engine.search_advanced(query=q, media_type=type)
+async def search_api(q: str, type: str = "all", page: int = 1):
+    results_df = engine.search_advanced(query=q, media_type=type, page=page)
 
-    # SPEED FIX: Start all searches at once
+    if results_df.empty:
+        return {"query": q, "count": 0, "results": []}
+
     async with httpx.AsyncClient() as client:
-        tasks = [get_details_parallel(client, item) for item in raw]
+        tasks = [
+            get_details_parallel(client, item) for _, item in results_df.iterrows()
+        ]
         formatted = await asyncio.gather(*tasks)
 
-    response = {"query": q, "count": len(formatted), "results": formatted}
-    search_cache[cache_key] = response  # Store in cache
-    print("✅ SEARCH: Cached new results.")
-    return response
+    return {"query": q, "count": len(formatted), "results": formatted}
+
 
 @app.get("/config")
 def get_config():
