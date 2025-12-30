@@ -139,8 +139,9 @@ async function renderCards(
       </div>
     `;
   }
-  // Attach event listeners after all cards are rendered
+  // Attach event listeners and animations after all cards are rendered
   attachAudioPlayerListeners();
+  initCardObserver();
 }
 
 function attachAudioPlayerListeners() {

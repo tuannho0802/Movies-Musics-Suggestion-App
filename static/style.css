@@ -147,11 +147,19 @@ input[type="text"] {
   background: var(--glass);
   border-radius: 20px;
   overflow: hidden;
-  transition: 0.4s
-    cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
+  
+  /* Animation initial state */
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.card.is-visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .card:hover {
