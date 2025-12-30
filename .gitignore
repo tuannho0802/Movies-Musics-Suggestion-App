@@ -4,7 +4,6 @@ ENV/
 env/
 .env
 .gitignore
-Gemini.md
 
 # Python Cache
 __pycache__/

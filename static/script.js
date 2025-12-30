@@ -9,8 +9,7 @@ let isLoading = false;
 let noMoreData = false;
 let currentView = ''; // 'trending' or 'search'
 let currentQuery = '';
-let currentTrendingType = '';
-let lastScrollY = window.scrollY;
+let currentTrendingType = "";
 // -------------------------
 
 async function loadConfig() {
@@ -19,16 +18,25 @@ async function loadConfig() {
 }
 
 async function loadTrending(type, containerId) {
-  const list = document.getElementById(containerId);
+  const list =
+    document.getElementById(containerId);
   if (!list) return;
   list.innerHTML = '<div class="loader"></div>';
 
   try {
-    const res = await fetch(`/trending?type=${type}&limit=5`);
+    const res = await fetch(
+      `/trending?type=${type}&limit=5`
+    );
     const data = await res.json();
-    renderCards(data.results, list, true, false); // Not appending here
+    renderCards(
+      data.results,
+      list,
+      true,
+      false
+    ); // Not appending here
   } catch (err) {
-    list.innerHTML = "<p>Error loading trending items.</p>";
+    list.innerHTML =
+      "<p>Error loading trending items.</p>";
   }
 }
 
@@ -67,7 +75,8 @@ async function renderCards(
 
   for (const item of results) {
     const imageUrl = await fetchImage(
-      item.image_url, item.title
+      item.image_url,
+      item.title
     );
     const genreDisplay = item.genre || "Media";
 
@@ -135,228 +144,346 @@ async function renderCards(
 }
 
 function attachAudioPlayerListeners() {
-  document.querySelectorAll(".custom-play-btn").forEach((button) => {
-    button.onclick = async (event) => {
-      // Add a loading guard to prevent multiple clicks
-      if (button.textContent.includes("Loading")) {
-        return;
-      }
-
-      const audioId = button.dataset.audioId;
-      let audio = document.getElementById(audioId);
-
-      // --- Pause any other playing audio ---
-      if (currentPlayingAudio && currentPlayingAudio.id !== audioId) {
-        currentPlayingAudio.pause();
-        const prevButton = document.querySelector(
-          `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
-        );
-        if (prevButton) prevButton.textContent = "▶ Play Preview";
-      }
-
-      // --- Handle the clicked button's audio ---
-      if (audio && !audio.paused) {
-        // If it's already playing, pause it
-        audio.pause();
-        button.textContent = "▶ Play Preview";
-        currentPlayingAudio = null;
-      } else if (audio && audio.paused) {
-        // If it's paused, play it
-        try {
-          await audio.play();
-          button.textContent = "⏸ Pause Preview";
-          currentPlayingAudio = audio;
-        } catch (e) {
-          console.error("Playback failed:", e);
+  document
+    .querySelectorAll(".custom-play-btn")
+    .forEach((button) => {
+      button.onclick = async (event) => {
+        // Add a loading guard to prevent multiple clicks
+        if (
+          button.textContent.includes("Loading")
+        ) {
+          return;
         }
-      } else {
-        // If there's no audio element yet, create and play it
-        button.textContent = "⌛ Loading...";
-        try {
-          const title = button.dataset.title;
-          const artist = button.dataset.artist;
-          const res = await fetch(
-            `/preview?title=${encodeURIComponent(
-              title
-            )}&artist=${encodeURIComponent(artist)}`
-          );
-          const data = await res.json();
 
-          if (data.url) {
-            audio = new Audio(data.url);
-            audio.id = audioId;
-            // Append it to the container so it's part of the DOM
-            button.parentElement.appendChild(audio);
+        const audioId = button.dataset.audioId;
+        let audio =
+          document.getElementById(audioId);
 
+        // --- Pause any other playing audio ---
+        if (
+          currentPlayingAudio &&
+          currentPlayingAudio.id !== audioId
+        ) {
+          currentPlayingAudio.pause();
+          const prevButton =
+            document.querySelector(
+              `.custom-play-btn[data-audio-id="${currentPlayingAudio.id}"]`
+            );
+          if (prevButton)
+            prevButton.textContent =
+              "▶ Play Preview";
+        }
+
+        // --- Handle the clicked button's audio ---
+        if (audio && !audio.paused) {
+          // If it's already playing, pause it
+          audio.pause();
+          button.textContent = "▶ Play Preview";
+          currentPlayingAudio = null;
+        } else if (audio && audio.paused) {
+          // If it's paused, play it
+          try {
             await audio.play();
-            button.textContent = "⏸ Pause Preview";
+            button.textContent =
+              "⏸ Pause Preview";
             currentPlayingAudio = audio;
+          } catch (e) {
+            console.error(
+              "Playback failed:",
+              e
+            );
+          }
+        } else {
+          // If there's no audio element yet, create and play it
+          button.textContent = "⌛ Loading...";
+          try {
+            const title = button.dataset.title;
+            const artist =
+              button.dataset.artist;
+            const res = await fetch(
+              `/preview?title=${encodeURIComponent(
+                title
+              )}&artist=${encodeURIComponent(
+                artist
+              )}`
+            );
+            const data = await res.json();
 
-            audio.onended = () => {
-              button.textContent = "▶ Play Preview";
-              currentPlayingAudio = null;
-            };
-          } else {
-            button.textContent = "🚫 Preview N/A";
+            if (data.url) {
+              audio = new Audio(data.url);
+              audio.id = audioId;
+              // Append it to the container so it's part of the DOM
+              button.parentElement.appendChild(
+                audio
+              );
+
+              await audio.play();
+              button.textContent =
+                "⏸ Pause Preview";
+              currentPlayingAudio = audio;
+
+              audio.onended = () => {
+                button.textContent =
+                  "▶ Play Preview";
+                currentPlayingAudio = null;
+              };
+            } else {
+              button.textContent =
+                "🚫 Preview N/A";
+              button.disabled = true;
+            }
+          } catch (error) {
+            console.error(
+              "Failed to fetch or play preview:",
+              error
+            );
+            button.textContent = "⚠️ Error";
             button.disabled = true;
           }
-        } catch (error) {
-          console.error("Failed to fetch or play preview:", error);
-          button.textContent = "⚠️ Error";
-          button.disabled = true;
         }
-      }
-    };
-  });
+      };
+    });
 }
 
-async function fetchImage(item_image_url, title) { // item_image_url is the image URL provided by the backend
-  const cacheKey = `img_v4_${title.replaceAll(/\s+/g, "_").toLowerCase()}`;
+async function fetchImage(
+  item_image_url,
+  title
+) {
+  // item_image_url is the image URL provided by the backend
+  const cacheKey = `img_v4_${title
+    .replaceAll(/\s+/g, "_")
+    .toLowerCase()}`;
   const cached = localStorage.getItem(cacheKey);
   if (cached) return cached;
 
   if (item_image_url) {
-    localStorage.setItem(cacheKey, item_image_url);
+    localStorage.setItem(
+      cacheKey,
+      item_image_url
+    );
     return item_image_url;
   }
 
   return fallbackImage;
 }
 
-document.querySelectorAll(".filter-btn").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
-    e.target.classList.add("active");
-    currentType = e.target.dataset.type;
-    const query = document.getElementById("userInput").value;
+document
+  .querySelectorAll(".filter-btn")
+  .forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      document
+        .querySelectorAll(".filter-btn")
+        .forEach((b) =>
+          b.classList.remove("active")
+        );
+      e.target.classList.add("active");
+      currentType = e.target.dataset.type;
+      const query =
+        document.getElementById(
+          "userInput"
+        ).value;
 
-    if (query.length >= 3) {
-      runSearch();
-    } else {
-      if (currentType === 'all') {
-        document.querySelector('.trending-section').style.display = 'block';
-        document.querySelector('.search-results-container').style.display = 'none';
+      if (query.length >= 3) {
+        runSearch();
       } else {
-        loadAllTrending(currentType);
+        if (currentType === "all") {
+          document.querySelector(
+            ".trending-section"
+          ).style.display = "block";
+          document.querySelector(
+            ".search-results-container"
+          ).style.display = "none";
+        } else {
+          loadAllTrending(currentType);
+        }
       }
-    }
+    });
   });
-});
 
-document.querySelectorAll(".see-more-btn").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    const type = e.target.dataset.type;
-    document.querySelectorAll(".filter-btn").forEach(b => {
-      b.classList.remove("active");
-      if(b.dataset.type === type) b.classList.add('active');
-    })
-    currentType = type;
-    loadAllTrending(type);
+document
+  .querySelectorAll(".see-more-btn")
+  .forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const type = e.target.dataset.type;
+      document
+        .querySelectorAll(".filter-btn")
+        .forEach((b) => {
+          b.classList.remove("active");
+          if (b.dataset.type === type)
+            b.classList.add("active");
+        });
+      currentType = type;
+      loadAllTrending(type);
+    });
   });
-});
 
 function resetInfiniteScroll() {
-    currentPage = 1;
-    noMoreData = false;
-    isLoading = false;
+  currentPage = 1;
+  noMoreData = false;
+  isLoading = false;
 }
 
 async function loadAllTrending(type) {
-    resetInfiniteScroll();
-    currentView = 'trending';
-    currentTrendingType = type;
+  resetInfiniteScroll();
+  currentView = "trending";
+  currentTrendingType = type;
 
-    document.querySelector('.trending-section').style.display = 'none';
-    document.querySelector('.search-results-container').style.display = 'block';
+  document.querySelector(
+    ".trending-section"
+  ).style.display = "none";
+  document.querySelector(
+    ".search-results-container"
+  ).style.display = "block";
 
-    const list = document.getElementById("searchResultsList");
-    const title = document.getElementById("searchResultsTitle");
-    title.innerText = `🔥 Trending ${type === 'movie' ? 'Movies' : 'Music'}`;
-    list.innerHTML = '<div class="loader"></div>';
+  const list = document.getElementById(
+    "searchResultsList"
+  );
+  const title = document.getElementById(
+    "searchResultsTitle"
+  );
+  title.innerText = `🔥 Trending ${
+    type === "movie" ? "Movies" : "Music"
+  }`;
+  list.innerHTML = '<div class="loader"></div>';
 
-    await loadMoreData();
+  await loadMoreData();
 }
 
 async function runSearch() {
-    resetInfiniteScroll();
-    currentView = 'search';
-    currentQuery = document.getElementById("userInput").value;
+  resetInfiniteScroll();
+  currentView = "search";
+  currentQuery =
+    document.getElementById("userInput").value;
 
-    document.querySelector('.trending-section').style.display = 'none';
-    document.querySelector('.search-results-container').style.display = 'block';
-    
-    const list = document.getElementById("searchResultsList");
-    const title = document.getElementById("searchResultsTitle");
-    title.innerText = `🔍 Results for "${currentQuery}"`;
-    list.innerHTML = '<div class="loader"></div>';
-    
-    await loadMoreData();
+  document.querySelector(
+    ".trending-section"
+  ).style.display = "none";
+  document.querySelector(
+    ".search-results-container"
+  ).style.display = "block";
+
+  const list = document.getElementById(
+    "searchResultsList"
+  );
+  const title = document.getElementById(
+    "searchResultsTitle"
+  );
+  title.innerText = `🔍 Results for "${currentQuery}"`;
+  list.innerHTML = '<div class="loader"></div>';
+
+  await loadMoreData();
 }
 
 async function loadMoreData() {
-    if (isLoading || noMoreData) return;
-    isLoading = true;
+  if (isLoading || noMoreData) return;
+  isLoading = true;
 
-    const list = document.getElementById("searchResultsList");
-    const loader = document.createElement('div');
-    loader.className = 'loader';
-    list.appendChild(loader);
+  const list = document.getElementById(
+    "searchResultsList"
+  );
+  const loader = document.createElement("div");
+  loader.className = "loader";
+  list.appendChild(loader);
 
-    let url = '';
-    if (currentView === 'trending') {
-        url = `/trending?type=${currentTrendingType}&page=${currentPage}`;
-    } else if (currentView === 'search') {
-        url = `/search?q=${encodeURIComponent(currentQuery)}&type=${currentType}&page=${currentPage}`;
+  let url = "";
+  if (currentView === "trending") {
+    url = `/trending?type=${currentTrendingType}&page=${currentPage}`;
+  } else if (currentView === "search") {
+    url = `/search?q=${encodeURIComponent(
+      currentQuery
+    )}&type=${currentType}&page=${currentPage}`;
+  } else {
+    isLoading = false;
+    return;
+  }
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (
+      data.results &&
+      data.results.length > 0
+    ) {
+      renderCards(
+        data.results,
+        list,
+        currentView === "trending",
+        true
+      );
+      currentPage++;
     } else {
-        isLoading = false;
-        return;
+      noMoreData = true;
+      const endMsg =
+        document.createElement("p");
+      endMsg.innerText =
+        "You've reached the end!";
+      endMsg.style.textAlign = "center";
+      list.appendChild(endMsg);
     }
-    
-    try {
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        if (data.results && data.results.length > 0) {
-            renderCards(data.results, list, currentView === 'trending', true);
-            currentPage++;
-        } else {
-            noMoreData = true;
-            const endMsg = document.createElement('p');
-            endMsg.innerText = "You've reached the end!";
-            endMsg.style.textAlign = 'center';
-            list.appendChild(endMsg);
-        }
-    } catch (err) {
-        // Handle error, maybe show a message
-    } finally {
-        isLoading = false;
-        const loader = list.querySelector('.loader');
-        if(loader) loader.remove();
-    }
+  } catch (err) {
+    // Handle error, maybe show a message
+  } finally {
+    isLoading = false;
+    const loader =
+      list.querySelector(".loader");
+    if (loader) loader.remove();
+  }
 }
 
+// --- Enhanced Smart Scroll Logic ---
+// --- Enhanced Smart Scroll Logic ---
+let lastScrollY = window.scrollY;
+const scrollDelta = 5; // How many pixels to scroll before the bar reacts
+const hideThreshold = 80; // Don't hide until user scrolls this far down
 
-window.addEventListener('scroll', () => {
-    const searchSection = document.querySelector('.search-section');
-    const scrollY = window.scrollY;
+// --- Fixed Smart Scroll Logic ---
 
-    if (scrollY > lastScrollY && scrollY > 10) { // Added a buffer
-        searchSection.classList.add('hidden');
-    } else {
-        searchSection.classList.remove('hidden');
+window.addEventListener(
+  "scroll",
+  () => {
+    const searchSection =
+      document.querySelector(".search-section");
+    const currentScrollY = window.scrollY;
+
+    // 1. Logic to show/hide the header
+    if (currentScrollY <= 10) {
+      // Force show when at the very top
+      searchSection.classList.remove("hidden");
+    } else if (currentScrollY < lastScrollY) {
+      // SCROLLING UP: Always reveal
+      searchSection.classList.remove("hidden");
+    } else if (
+      currentScrollY > lastScrollY &&
+      currentScrollY > 100
+    ) {
+      // SCROLLING DOWN: Hide after passing 100px
+      searchSection.classList.add("hidden");
     }
-    lastScrollY = scrollY;
 
-    // Don't trigger on main trending page
-    if (document.querySelector('.search-results-container').style.display !== 'block') {
-        return;
-    }
+    lastScrollY = currentScrollY;
 
-    if ((window.innerHeight + scrollY) >= document.body.offsetHeight - 200) {
+    // 2. Infinite Scroll Trigger
+    const resultsContainer =
+      document.querySelector(
+        ".search-results-container"
+      );
+    if (
+      resultsContainer.style.display ===
+        "block" &&
+      !isLoading &&
+      !noMoreData
+    ) {
+      if (
+        window.innerHeight + currentScrollY >=
+        document.body.offsetHeight - 800
+      ) {
         loadMoreData();
+      }
     }
-});
-
+  },
+  { passive: true }
+);
 
 function clearSearch() {
   const input = document.getElementById("userInput");

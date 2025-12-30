@@ -18,6 +18,8 @@ A unique application that allows users to find movies and music based on **conce
 ## ✨ Features
 
 *   **Semantic Search:** Find media using natural language queries based on meaning, not just exact keywords.
+*   **Fully Responsive UI:** The entire interface is now fully responsive, providing an optimal viewing experience on desktops, tablets, and mobile phones.
+*   **Dynamic Search Bar:** The search bar now automatically hides when you scroll down and reappears when you scroll up, creating more space for content (similar to the Facebook app).
 *   **Movie & Music Discovery:** Search for both movies and music within a unified interface.
 *   **Trending Views:** Explore curated lists of trending movies and music.
 *   **"See More" Functionality:** Load more content with a click in trending views.
@@ -125,3 +127,14 @@ This application leverages Natural Language Processing (NLP) to go beyond simple
 ## 🐞 Bug Report / Feedback
 
 If you encounter any issues or have suggestions, please use the `/bug` command or report them.
+
+## 🤖 Development with Gemini CLI
+
+This project has been significantly improved with the assistance of the Gemini CLI. Gemini was used to:
+
+*   **Debug and fix complex UI/UX issues,** such as the mobile scrolling bug.
+*   **Rapidly prototype and implement new features,** like the responsive grid layout and the dynamic "Facebook-style" search bar.
+*   **Refactor and improve CSS and JavaScript** for better performance and maintainability.
+*   **Generate documentation** and summarize development progress.
+
+The use of an AI assistant streamlined the development process, allowing for faster iteration and more robust feature implementation.

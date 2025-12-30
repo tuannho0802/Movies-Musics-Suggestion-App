@@ -19,28 +19,89 @@ body {
   margin-bottom: 10px;
 }
 
+/* --- Advanced Smart Header (Universal) --- */
 .search-section {
-  position: sticky;
+  position: fixed; /* Ensures it stays out of the flow to follow scroll */
   top: 0;
+  left: 0;
+  width: 100%;
   background: var(--bg);
-  padding: 20px 0;
-  z-index: 10;
-  transition: top 0.3s ease-in-out;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); 
+  padding: 15px 20px;
+  z-index: 1100;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  will-change: transform;
+  box-sizing: border-box;
 }
 
+/* Slide up state */
 .search-section.hidden {
-  top: -200px; /* Adjust this value to be more than the height of the search section */
+  transform: translateY(-110%);
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* Glassmorphism Search Bar */
+/* CONTENT OFFSET: Crucial for Fixed headers */
+/* This prevents your movies from being hidden under the bar on page load */
+.trending-section, .search-results-container {
+  margin-top: 150px; 
+}
+
+/* Mobile Specific Fix */
+@media (max-width: 768px) {
+  .search-section {
+    padding: 10px 15px;
+    background: rgba(15, 15, 18, 0.98); /* Solidify for mobile performance */
+  }
+  
+  /* On mobile, the search field is taller, so we need more margin */
+  .trending-section, .search-results-container {
+    margin-top: 200px; 
+  }
+
+}
+
+/* Glassmorphism Bar - Fixed for all devices */
 .search-container {
   display: flex;
-  background: var(--glass);
-  backdrop-filter: blur(10px);
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); /* Safari support */
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 10px;
-  border-radius: 15px;
-  margin-bottom: 20px;
+  padding: 5px 15px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s ease;
+}
+
+/* Active focus state */
+.search-container:focus-within {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 15px rgba(98, 0, 238, 0.3);
+}
+
+#userInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 12px;
+  font-size: 1rem;
+  outline: none;
+  min-width: 0; /* Prevents overflow on mobile */
+}
+
+/* Responsive adjustments for Mobile */
+@media (max-width: 768px) {
+ 
+  #userInput {
+    font-size: 0.95rem;
+    padding: 10px;
+  }
 }
 
 input[type="text"] {
@@ -397,4 +458,69 @@ input[type="range"] {
 
 .custom-play-btn:hover {
     background: #00eddb;
+}
+
+/* ---- Responsiveness ---- */
+
+/* Tablet Layout */
+@media (max-width: 1024px) {
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+
+  .header h1 {
+    font-size: 2.5rem;
+  }
+}
+/* Mobile Layout */
+@media (max-width: 768px) { 
+  .search-container {
+    flex-direction: row; /* Keep elements side-by-side */
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.08); /* Slightly brighter glass */
+    border-radius: 50px; /* Fully rounded pill shape */
+    margin: 0 10px 15px 10px;
+    gap: 5px;
+  }
+
+  #userInput {
+    padding: 10px;
+    font-size: 0.95rem;
+    margin-bottom: 0; /* Remove the bottom margin from the old style */
+    background: transparent;
+    border: none;
+  }
+
+  .discover-btn {
+    padding: 10px 18px;
+    font-size: 0.85rem;
+    border-radius: 40px;
+    white-space: nowrap; /* Prevents text wrapping */
+  }
+
+  /* Filter buttons styling */
+  .type-toggles {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding-bottom: 10px;
+  }
+
+  .filter-btn {
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+/* Global Fixes */
+html, body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.main-content {
+  overflow-y: auto;
 }
