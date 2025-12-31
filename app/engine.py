@@ -2,6 +2,7 @@ import pandas as pd
 import torch
 import os
 from sentence_transformers import SentenceTransformer, util
+from app.database import DataLoader # Import DataLoader
 
 class RecommendationEngine:
     def __init__(self):
@@ -15,12 +16,37 @@ class RecommendationEngine:
         else:
             print(f"❌ No pre-loaded embeddings found at: {self.embeddings_path}")
 
+    def init_data(self, movie_path_og, movie_path_new, music_path):
+        self.media_df = DataLoader.load_media(movie_path_og, movie_path_new, music_path)
+        if self.embeddings is None:
+            self._prepare_embeddings()
+
     def _prepare_embeddings(self):
         if self.media_df is None:
             return
         descriptions = self.media_df["description"].tolist()
         self.embeddings = self.model.encode(descriptions, convert_to_tensor=True, show_progress_bar=True)
         torch.save(self.embeddings, self.embeddings_path)
+
+    def autocomplete_search(self, query: str, limit: int = 5):
+        if self.media_df is None:
+            return []
+
+        # Simple fuzzy matching: check if query is contained in title (case-insensitive)
+        mask = self.media_df['title'].str.contains(query, case=False, na=False)
+        suggestions = self.media_df[mask].head(limit)
+
+        results = []
+        for index, row in suggestions.iterrows():
+            item_id = row['id'] if 'id' in row else index # Use existing 'id' or DataFrame index
+            results.append({
+                "id": item_id,
+                "title": row['title'],
+                "type": row['type'],
+                "year": row['year'], # Use 'year' for both, which is artist for music
+                "image_url": row['image_url'] if 'image_url' in row else None # Will be fetched dynamically
+            })
+        return results
 
     def search_advanced(self, query, media_type="all", page=1, page_size=12):
         query_embedding = self.model.encode(query, convert_to_tensor=True)

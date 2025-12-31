@@ -4,8 +4,7 @@ import pandas as pd
 import httpx
 import math
 import asyncio
-import shutil # Import shutil
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,15 +13,19 @@ from .engine import RecommendationEngine
 from .models import SearchResponse
 from .youtube_tool import YoutubeToolset
 from huggingface_hub import hf_hub_download
+from dotenv import load_dotenv  # Import load_dotenv
 
 app = FastAPI()
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
 )
 engine = RecommendationEngine()
 youtube_tool = YoutubeToolset()
 
-# HELPER: Remains exactly as your original
 def clean_val(val, default=""):
     if val is None:
         return default
@@ -31,74 +34,71 @@ def clean_val(val, default=""):
     return str(val)
 
 
+def _update_media_df_with_url(media_type, title, year, url_type, url):
+    if engine.media_df is not None:
+        url = clean_val(url)
+        idx = engine.media_df[
+            (engine.media_df["title"] == title) & (engine.media_df["year"] == year)
+        ].index
+        if not idx.empty:
+            engine.media_df.loc[idx, url_type] = url
+
 
 @app.on_event("startup")
 async def startup_event():
     print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE\n" + "=" * 50)
-    
-    # Define the repository where your data is stored
-    DATASET_REPO = "tuannho080213/media_data"
-    DATA_CACHE_DIR = "data_cache" # Define a local cache directory
 
-    # Ensure the cache directory exists
+    # Load environment variables from .env file
+    load_dotenv()
+    # print(f"DEBUG: TMDB_API_KEY from environment: {os.getenv('TMDB_API_KEY')}")
+
+    DATASET_REPO = "tuannho080213/media_data"
+    DATA_CACHE_DIR = "data_cache" 
+
     os.makedirs(DATA_CACHE_DIR, exist_ok=True)
-    
-    # Define local paths for the datasets
+
     local_path1 = os.path.join(DATA_CACHE_DIR, "movies_metadata.csv")
     local_path2 = os.path.join(DATA_CACHE_DIR, "TMDB_movie_dataset_v11.csv")
     local_path3 = os.path.join(DATA_CACHE_DIR, "music_data.csv")
 
     try:
-        # Check if files already exist locally, otherwise download
-        if not os.path.exists(local_path1):
-            print(f"Downloading movies_metadata.csv to {local_path1}")
-            path1_temp = hf_hub_download(repo_id=DATASET_REPO, filename="movies_metadata.csv", repo_type="dataset")
-            shutil.copyfile(path1_temp, local_path1) # Copy the downloaded file
-            os.remove(path1_temp) # Remove the temporary file
-            path1 = local_path1
-        else:
-            print(f"Using cached movies_metadata.csv from {local_path1}")
-            path1 = local_path1
+        # Download files using local_dir
+        hf_hub_download(
+            repo_id=DATASET_REPO,
+            filename="movies_metadata.csv",
+            repo_type="dataset",
+            local_dir=DATA_CACHE_DIR,
+        )
+        hf_hub_download(
+            repo_id=DATASET_REPO,
+            filename="TMDB_movie_dataset_v11.csv",
+            repo_type="dataset",
+            local_dir=DATA_CACHE_DIR,
+        )
+        hf_hub_download(
+            repo_id=DATASET_REPO,
+            filename="music_data.csv",
+            repo_type="dataset",
+            local_dir=DATA_CACHE_DIR,
+        )
 
-        if not os.path.exists(local_path2):
-            print(f"Downloading TMDB_movie_dataset_v11.csv to {local_path2}")
-            path2_temp = hf_hub_download(repo_id=DATASET_REPO, filename="TMDB_movie_dataset_v11.csv", repo_type="dataset")
-            shutil.copyfile(path2_temp, local_path2)
-            os.remove(path2_temp)
-            path2 = local_path2
-        else:
-            print(f"Using cached TMDB_movie_dataset_v11.csv from {local_path2}")
-            path2 = local_path2
+        # Initialize engine data
+        engine.init_data(local_path1, local_path2, local_path3)
 
-        if not os.path.exists(local_path3):
-            print(f"Downloading music_data.csv to {local_path3}")
-            path3_temp = hf_hub_download(repo_id=DATASET_REPO, filename="music_data.csv", repo_type="dataset")
-            shutil.copyfile(path3_temp, local_path3)
-            os.remove(path3_temp)
-            path3 = local_path3
+        if engine.media_df is not None:
+            print(f"✅ SUCCESS: Loaded {len(engine.media_df)} items.")
         else:
-            print(f"Using cached music_data.csv from {local_path3}")
-            path3 = local_path3
+            print("❌ ERROR: engine.media_df is None after init_data.")
 
-        # Pass these (potentially cached) paths to your DataLoader
-        data = DataLoader.load_media(path1, path2, path3)
-        
-        if not data.empty:
-            engine.media_df = data
-            if engine.embeddings is None:
-                print("🛠️ No embeddings found, building new ones...")
-                engine._prepare_embeddings()
-            print(f"✅ SUCCESS: Loaded {len(data)} items.")
     except Exception as e:
-        print(f"❌ ERROR: Failed to fetch data from Hub: {e}")
-    
+        print(f"❌ ERROR: Failed to fetch or load data: {e}")
+
     print("=" * 50 + "\n")
 
-# --- THE OPTIMIZATION WORKER ---
+# --- THE OPTIMIZATION WORKER (remains unchanged) ---
 async def get_details_parallel(client, item):
     """Processes a single item (pd.Series) and ensures all URLs are present."""
 
-    # 1. Start with the base data
     item_dict = {
         "title": clean_val(item.get("title")),
         "year": clean_val(item.get("year")),
@@ -107,11 +107,9 @@ async def get_details_parallel(client, item):
         "genre": clean_val(item.get("genre")),
         "popularity": int(round(float(item.get("popularity", 0)))),
         "score": float(item.get("score", 1.0)),
-        # Initial image_url from the dataframe/dict
         "image_url": clean_val(item.get("image_url", "")),
     }
 
-    # If image_url is still empty, try to fetch it from external sources
     if not item_dict["image_url"]:
         if item_dict["type"] == "movie":
             item_dict["image_url"] = await asyncio.to_thread(
@@ -122,21 +120,14 @@ async def get_details_parallel(client, item):
                 youtube_tool.get_music_image_url, item_dict["title"], item_dict["year"]
             )
 
-    # 2. Fix Movie Trailers
     if item_dict["type"] == "movie":
-        # Check if URL already exists in the item
         trailer_url = clean_val(item.get("trailer_url", ""))
-
         if not trailer_url:
-            # Search YouTube if missing (this function is cached)
             trailer_url = await asyncio.to_thread(
                 youtube_tool.find_trailer_url, item_dict["title"], item_dict["year"]
             )
-        
-        # This is the final URL for the response
         item_dict["trailer_url"] = clean_val(trailer_url)
 
-    # 3. Handle Music Previews (On-demand via /preview endpoint)
     if item_dict["type"] == "music":
         item_dict["preview_url"] = ""
 
@@ -155,6 +146,50 @@ async def get_preview_url(title: str, artist: str):
 
 
 # --- API Endpoints ---
+@app.get("/autocomplete")
+async def autocomplete(q: str = Query(..., min_length=1)):
+    if not q:
+        return {"movies": [], "music": []}
+
+    suggestions_raw = engine.autocomplete_search(
+        q, limit=20
+    )  # Get enough to pick top 3 of each
+
+    # Prepare tasks for fetching image URLs concurrently for ALL raw suggestions
+    image_fetch_tasks = []
+    for item in suggestions_raw:
+        if item["type"] == "movie":
+            image_fetch_tasks.append(
+                asyncio.to_thread(youtube_tool.get_movie_image_url, item["title"])
+            )
+        elif item["type"] == "music":
+            # 'year' column in media_df for music stores artist name
+            image_fetch_tasks.append(
+                asyncio.to_thread(
+                    youtube_tool.get_music_image_url, item["title"], item["year"]
+                )
+            )
+        else:
+            image_fetch_tasks.append(
+                asyncio.to_thread(lambda: None)
+            )  # Placeholder for unknown types
+
+    fetched_image_urls = await asyncio.gather(*image_fetch_tasks)
+
+    # Assign fetched image URLs back to the suggestions_raw
+    for i, item in enumerate(suggestions_raw):
+        item["image_url"] = fetched_image_urls[i]
+
+    final_movie_suggestions = []
+    final_music_suggestions = []
+
+    for item in suggestions_raw:
+        if item["type"] == "movie" and len(final_movie_suggestions) < 3:
+            final_movie_suggestions.append(item)
+        elif item["type"] == "music" and len(final_music_suggestions) < 3:
+            final_music_suggestions.append(item)
+
+    return {"movies": final_movie_suggestions, "music": final_music_suggestions}
 
 
 @app.get("/trending")
@@ -199,7 +234,6 @@ async def search_api(q: str, type: str = "all", page: int = 1):
 def get_config():
     return {"TMDB_API_KEY": os.getenv("TMDB_API_KEY", "")}
 
-# Your original update logic
 def _update_media_df_with_url(media_type, title, year, url_type, url):
     if engine.media_df is not None:
         url = clean_val(url)

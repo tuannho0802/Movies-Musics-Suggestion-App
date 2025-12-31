@@ -18,6 +18,13 @@ A unique application that allows users to find movies and music based on **conce
 ## ✨ Features
 
 *   **Semantic Search:** Find media using natural language queries based on meaning, not just exact keywords.
+*   **Advanced Autocomplete:**
+    *   **Rich Metadata:** Suggestions now display icons (🎬 Movie, 🎶 Music), small thumbnails, and relevant metadata (e.g., year, artist).
+    *   **Grouped Results:** Autocomplete suggestions are categorized into "Movies" and "Music" with clear headers.
+    *   **Intelligent Search:** Features fuzzy matching for typo tolerance and keyword highlighting within suggestions.
+    *   **Advanced Keyboard Navigation:** Fully navigable with arrow keys to highlight and Enter to select, providing a seamless, mouse-free experience.
+    *   **Performance & Efficiency:** Utilizes client-side caching for instant recall of recent searches and triggers suggestions only after 3 characters to optimize server load.
+    *   **UI/UX Refinements:** Includes skeleton loaders during data fetching, displays "No matches found" messages when applicable, and adjusts for mobile-specific heights to ensure a smooth user experience.
 *   **Fully Responsive UI:** The entire interface is now fully responsive, providing an optimal viewing experience on desktops, tablets, and mobile phones.
 *   **Dynamic Search Bar:** The search bar now automatically hides when you scroll down and reappears when you scroll up, creating more space for content (similar to the Facebook app).
 *   **Movie & Music Discovery:** Search for both movies and music within a unified interface.
@@ -30,6 +37,10 @@ A unique application that allows users to find movies and music based on **conce
 
 ## 🚀 Latest Enhancements (December 2025)
 
+*   **Advanced Autocomplete Implementation:** Introduced a sophisticated autocomplete feature with rich metadata, fuzzy matching, keyboard navigation, performance optimizations (caching, min search length), and UI/UX refinements (skeleton loaders, empty states, mobile-specific height).
+*   **Fix for Missing Movie Images in Autocomplete:** Resolved the issue preventing movie poster images from appearing in autocomplete suggestions by ensuring correct `TMDB_API_KEY` loading and API interaction.
+*   **Server Warning Removal:** Eliminated the `huggingface_hub` `UserWarning` by updating `hf_hub_download` calls to remove the deprecated `local_dir_use_symlinks` parameter.
+*   **"Hey, this is what you're looking for!" Feature:** Implemented a new display mechanism that, upon selecting an autocomplete suggestion, shows a prominent single media card with a personalized message and a "Back to Search Results" button.
 *   **Drastic Performance Overhaul:** Implemented a series of optimizations to significantly improve application responsiveness and reduce loading times.
 *   **Lazy Loading for Music Previews:** Music preview URLs are now fetched on-demand when the user clicks the "Play Preview" button. This prevents a large number of initial network requests and makes the UI load much faster.
 *   **Comprehensive Caching Strategy:**

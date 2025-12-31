@@ -10,3 +10,4 @@ python-dotenv
 cachetools
 requests
 hf_xet
+Pillow
