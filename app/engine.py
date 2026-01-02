@@ -9,7 +9,9 @@ class RecommendationEngine:
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
         self.media_df = None
         self.embeddings = None
-        self.embeddings_path = "media_embeddings.pt"
+        # Use absolute path to ensure the engine finds the file downloaded by lifespan
+        self.embeddings_path = os.path.abspath("media_embeddings.pt")
+
         if os.path.exists(self.embeddings_path):
             print(f"✅ Pre-loaded embeddings found at: {self.embeddings_path}")
             self.embeddings = torch.load(self.embeddings_path)
@@ -22,17 +24,26 @@ class RecommendationEngine:
             movie_path_og, movie_path_new, music_path
         ).reset_index(drop=True)
 
-        # Check if we need to update embeddings
-        if self.embeddings is None or len(self.embeddings) != len(self.media_df):
+        # FIX: Only generate new embeddings if NONE exist.
+        # If they exist but counts differ, we use them anyway to keep the app fast.
+        # Your Daily Sync GitHub Action will provide the updated .pt file.
+        if self.embeddings is None:
             print(
-                f"🔄 Data changed! {len(self.media_df)} items found. Updating search index..."
+                f"🔄 No embeddings loaded. Generating new index for {len(self.media_df)} items..."
             )
             self._prepare_embeddings()
+        elif len(self.embeddings) != len(self.media_df):
+            print(
+                f"⚠️ Warning: Embedding count ({len(self.embeddings)}) != Data count ({len(self.media_df)})."
+            )
+            print(
+                "Skipping re-generation to save time. New items will be searchable after the next Daily Sync."
+            )
 
     def _prepare_embeddings(self):
         if self.media_df is None:
             return
-        descriptions = self.media_df["description"].tolist()
+        descriptions = self.media_df["description"].fillna("").tolist()
         self.embeddings = self.model.encode(descriptions, convert_to_tensor=True, show_progress_bar=True)
         torch.save(self.embeddings, self.embeddings_path)
 
@@ -55,6 +66,14 @@ class RecommendationEngine:
                 "image_url": row['image_url'] if 'image_url' in row else None # Will be fetched dynamically
             })
         return results
+
+    def reload_embeddings(self):
+        """Manually trigger a reload of the embeddings file from disk."""
+        if os.path.exists(self.embeddings_path):
+            self.embeddings = torch.load(self.embeddings_path)
+            print(f"✅ Embeddings successfully reloaded from: {self.embeddings_path}")
+        else:
+            print("❌ Reload failed: File not found.")
 
     def search_advanced(self, query, media_type="all", page=1, page_size=12):
         if self.media_df is None or self.embeddings is None:
@@ -83,27 +102,32 @@ class RecommendationEngine:
         # --- 3. Normal Semantic Search (Old Functionality) ---
         query_embedding = self.model.encode(query, convert_to_tensor=True)
 
+        # Ensure we don't go out of bounds if embeddings and dataframe are slightly out of sync
+        max_idx = min(len(df_to_search), len(self.embeddings))
+        search_embeddings = self.embeddings[:max_idx]
+        search_df = df_to_search.iloc[:max_idx]
+
         if media_type != "all":
-            mask = df_to_search["type"] == media_type
-            indices = df_to_search.index[mask].tolist()
+            mask = search_df["type"] == media_type
+            indices = search_df.index[mask].tolist()
             if not indices:
                 return pd.DataFrame()
 
-            subset_embeddings = self.embeddings[indices]
+            subset_embeddings = search_embeddings[indices]
             hits = util.semantic_search(query_embedding, subset_embeddings, top_k=min(100, len(indices)))
 
-            # Map hit indices back to the continuous range of df_to_search
+            # Map hit indices back to the continuous range of search_df
             final_indices = [indices[hit["corpus_id"]] for hit in hits[0]]
             scores = [hit['score'] for hit in hits[0]]
 
-            results_df = df_to_search.iloc[final_indices].copy()
+            results_df = search_df.iloc[final_indices].copy()
             results_df["score"] = scores
         else:
-            hits = util.semantic_search(query_embedding, self.embeddings, top_k=100)
+            hits = util.semantic_search(query_embedding, search_embeddings, top_k=100)
             final_indices = [hit["corpus_id"] for hit in hits[0]]
             scores = [hit['score'] for hit in hits[0]]
 
-            results_df = df_to_search.iloc[final_indices].copy()
+            results_df = search_df.iloc[final_indices].copy()
             results_df["score"] = scores
 
         # Sort and paginate as before

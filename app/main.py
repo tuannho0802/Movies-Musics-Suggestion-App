@@ -47,7 +47,7 @@ def _update_media_df_with_url(media_type, title, year, url_type, url):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     # --- STARTUP LOGIC ---
     print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE (LIFESPAN)\n" + "=" * 50)
     load_dotenv()
@@ -88,6 +88,8 @@ async def lifespan(app: FastAPI):
             )
             shutil.copy(emb_path, EMBEDDINGS_FILENAME)
             print("✅ Pre-computed embeddings found and downloaded.")
+            engine.reload_embeddings()
+            engine.init_data(local_path1, local_path2, local_path3)
         except Exception:
             print(
                 "ℹ️ No embeddings found on HF. Engine will check local or create new ones."
@@ -113,7 +115,7 @@ app = FastAPI(lifespan=lifespan)
 # --- THE OPTIMIZATION WORKER (remains unchanged) ---
 async def get_details_parallel(client, item):
     """Processes a single item (pd.Series) and ensures all URLs are present."""
-
+    await asyncio.sleep(random.uniform(0.1, 0.3))
     item_dict = {
         "title": clean_val(item.get("title")),
         "year": clean_val(item.get("year")),
