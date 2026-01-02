@@ -31,6 +31,13 @@ class DataLoader:
         def build_subset(path, col_map, type_label):
             try:
                 df_raw = pd.read_csv(path, low_memory=False)
+                pop_col = (
+                    "popularity"
+                    if "popularity" in df_raw.columns
+                    else col_map.get("popularity")
+                )
+                if pop_col in df_raw.columns and len(df_raw) > 50000:
+                    df_raw = df_raw.sort_values(by=pop_col, ascending=False).head(50000)
             except Exception as e:
                 print(f"Error reading CSV from {path}: {e}")
                 return pd.DataFrame(columns=["dedupe_key"]) # Return with dedupe_key column for consistency
@@ -104,12 +111,13 @@ class DataLoader:
 
         m1 = build_subset(
             movie_path_og,
-            {"title": "title", "description": "overview", "popularity": "vote_average"},
+            {"title": "title", "description": "overview", "popularity": "vote_count"},
             "movie",
         )
+
         m2 = build_subset(
             movie_path_new,
-            {"title": "title", "description": "overview", "popularity": "vote_average"},
+            {"title": "title", "description": "overview", "popularity": "popularity"},
             "movie",
         )
         s1 = build_subset(
@@ -123,6 +131,7 @@ class DataLoader:
         )
 
         combined = pd.concat([m1, m2, s1], ignore_index=True)
+        combined = combined.sort_values(by="popularity", ascending=False).head(50000)
 
         if combined.empty:
             print("Warning: Combined DataFrame is empty after concatenation. No data loaded.")

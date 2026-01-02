@@ -4,6 +4,8 @@ import pandas as pd
 import httpx
 import math
 import asyncio
+from contextlib import asynccontextmanager
+import shutil
 from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -44,56 +46,69 @@ def _update_media_df_with_url(media_type, title, year, url_type, url):
             engine.media_df.loc[idx, url_type] = url
 
 
-@app.on_event("startup")
-async def startup_event():
-    print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE\n" + "=" * 50)
-
-    # Load environment variables from .env file
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- STARTUP LOGIC ---
+    print("\n" + "=" * 50 + "\n🚀 INITIALIZING ENGINE (LIFESPAN)\n" + "=" * 50)
     load_dotenv()
-    # print(f"DEBUG: TMDB_API_KEY from environment: {os.getenv('TMDB_API_KEY')}")
 
     DATASET_REPO = "tuannho080213/media_data"
     DATA_CACHE_DIR = "data_cache" 
-
+    EMBEDDINGS_FILENAME = "media_embeddings.pt"
     os.makedirs(DATA_CACHE_DIR, exist_ok=True)
 
     local_path1 = os.path.join(DATA_CACHE_DIR, "movies_metadata.csv")
-    local_path2 = os.path.join(DATA_CACHE_DIR, "TMDB_movie_dataset_v11.csv")
     local_path3 = os.path.join(DATA_CACHE_DIR, "music_data.csv")
+    local_path2 = os.path.join(DATA_CACHE_DIR, "TMDB_movie_dataset_v11.csv")
 
     try:
-        # Download files using local_dir
-        hf_hub_download(
-            repo_id=DATASET_REPO,
-            filename="movies_metadata.csv",
-            repo_type="dataset",
-            local_dir=DATA_CACHE_DIR,
-        )
-        hf_hub_download(
-            repo_id=DATASET_REPO,
-            filename="TMDB_movie_dataset_v11.csv",
-            repo_type="dataset",
-            local_dir=DATA_CACHE_DIR,
-        )
-        hf_hub_download(
-            repo_id=DATASET_REPO,
-            filename="music_data.csv",
-            repo_type="dataset",
-            local_dir=DATA_CACHE_DIR,
-        )
+        files_to_download = [
+            "movies_metadata.csv",
+            "music_data.csv",
+            "TMDB_movie_dataset_v11.csv",
+        ]
 
-        # Initialize engine data
+        for f in files_to_download:
+            print(f"📥 Checking/Downloading: {f}...")
+            hf_hub_download(
+                repo_id=DATASET_REPO,
+                filename=f,
+                repo_type="dataset",
+                local_dir=DATA_CACHE_DIR,
+            )
+
+        # SMART EMBEDDING DOWNLOAD
+        try:
+            print(f"📡 Checking Hugging Face for {EMBEDDINGS_FILENAME}...")
+            emb_path = hf_hub_download(
+                repo_id=DATASET_REPO,
+                filename=EMBEDDINGS_FILENAME,
+                repo_type="dataset",
+                token=os.getenv("HF_TOKEN"),
+            )
+            shutil.copy(emb_path, EMBEDDINGS_FILENAME)
+            print("✅ Pre-computed embeddings found and downloaded.")
+        except Exception:
+            print(
+                "ℹ️ No embeddings found on HF. Engine will check local or create new ones."
+            )
+
+        # Init Engine
         engine.init_data(local_path1, local_path2, local_path3)
-
-        if engine.media_df is not None:
-            print(f"✅ SUCCESS: Loaded {len(engine.media_df)} items.")
-        else:
-            print("❌ ERROR: engine.media_df is None after init_data.")
+        print(f"✅ SUCCESS: Loaded {len(engine.media_df)} items.")
 
     except Exception as e:
-        print(f"❌ ERROR: Failed to fetch or load data: {e}")
-
+        print(f"❌ ERROR: Startup failed: {e}")
     print("=" * 50 + "\n")
+
+    yield  # --- APP IS RUNNING ---
+
+    # --- SHUTDOWN LOGIC (Optional) ---
+    print("Shutting down...")
+
+
+# 2. Pass the lifespan to the FastAPI app
+app = FastAPI(lifespan=lifespan)
 
 # --- THE OPTIMIZATION WORKER (remains unchanged) ---
 async def get_details_parallel(client, item):

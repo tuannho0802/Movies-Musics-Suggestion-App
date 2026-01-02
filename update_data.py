@@ -2,11 +2,28 @@ import os
 import pandas as pd
 import requests
 from huggingface_hub import HfApi, hf_hub_download
+from app.engine import RecommendationEngine
 
 # Config
 TMDB_KEY = os.getenv("TMDB_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN")
 REPO_ID = "tuannho080213/media_data"
+
+# 1. Trigger the encoding locally on the GitHub Action runner
+engine = RecommendationEngine()
+engine.init_data("movies.csv", "new_movies.csv", "music.csv")
+
+# 2. Upload the new .pt file back to the dataset
+from huggingface_hub import HfApi
+
+api = HfApi()
+api.upload_file(
+    path_or_fileobj="media_embeddings.pt",
+    path_in_repo="media_embeddings.pt",
+    repo_id="tuannho080213/media_data",
+    repo_type="dataset",
+    token=os.getenv("HF_TOKEN"),
+)
 
 
 def fetch_trending_movies():
