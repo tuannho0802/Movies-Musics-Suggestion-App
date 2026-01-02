@@ -30,7 +30,7 @@ class DataLoader:
 
         def build_subset(path, col_map, type_label):
             try:
-                df_raw = pd.read_csv(path, low_memory=False).head(8000)
+                df_raw = pd.read_csv(path, low_memory=False)
             except Exception as e:
                 print(f"Error reading CSV from {path}: {e}")
                 return pd.DataFrame(columns=["dedupe_key"]) # Return with dedupe_key column for consistency
@@ -123,7 +123,7 @@ class DataLoader:
         )
 
         combined = pd.concat([m1, m2, s1], ignore_index=True)
-        
+
         if combined.empty:
             print("Warning: Combined DataFrame is empty after concatenation. No data loaded.")
             return combined

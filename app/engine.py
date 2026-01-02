@@ -17,8 +17,16 @@ class RecommendationEngine:
             print(f"❌ No pre-loaded embeddings found at: {self.embeddings_path}")
 
     def init_data(self, movie_path_og, movie_path_new, music_path):
-        self.media_df = DataLoader.load_media(movie_path_og, movie_path_new, music_path)
-        if self.embeddings is None:
+        # Always reset index so the row numbers (0, 1, 2...) match the embeddings exactly
+        self.media_df = DataLoader.load_media(
+            movie_path_og, movie_path_new, music_path
+        ).reset_index(drop=True)
+
+        # Check if we need to update embeddings
+        if self.embeddings is None or len(self.embeddings) != len(self.media_df):
+            print(
+                f"🔄 Data changed! {len(self.media_df)} items found. Updating search index..."
+            )
             self._prepare_embeddings()
 
     def _prepare_embeddings(self):
