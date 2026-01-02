@@ -1,0 +1,27 @@
+name: Daily Data Sync
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Runs every night at midnight
+  workflow_dispatch: # Allows you to run it manually with a button
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: ambassadors/setup-python@v2
+        with:
+          python-version: "3.9"
+
+      - name: Install Dependencies
+        run: pip install pandas requests huggingface_hub
+
+      - name: Run Update Script
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python update_data.py
