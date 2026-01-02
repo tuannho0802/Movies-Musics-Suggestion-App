@@ -49,34 +49,58 @@ class RecommendationEngine:
         return results
 
     def search_advanced(self, query, media_type="all", page=1, page_size=12):
+        if self.media_df is None or self.embeddings is None:
+            return pd.DataFrame()
+
+        # --- 1. Fix the Indexing Bug ---
+        # We reset the index to ensure row numbers match the embeddings tensor exactly
+        df_to_search = self.media_df.reset_index(drop=True)
+
+        # --- 2. Specific Search Logic (Direct Match) ---
+        # Normalize for a fair comparison
+        clean_query = query.strip().lower()
+
+        # Check for an exact title match (Case-insensitive)
+        exact_match = df_to_search[df_to_search["title"].str.lower() == clean_query]
+
+        if media_type != "all":
+            exact_match = exact_match[exact_match["type"] == media_type]
+
+        # If a perfect match is found on the first page, return it with a 1.0 score
+        if not exact_match.empty and page == 1:
+            results_df = exact_match.copy()
+            results_df["score"] = 1.0
+            return results_df.sort_values(by="popularity", ascending=False).head(1)
+
+        # --- 3. Normal Semantic Search (Old Functionality) ---
         query_embedding = self.model.encode(query, convert_to_tensor=True)
 
         if media_type != "all":
-            subset_df = self.media_df[self.media_df["type"] == media_type]
-            indices = subset_df.index.tolist()
+            mask = df_to_search["type"] == media_type
+            indices = df_to_search.index[mask].tolist()
             if not indices:
                 return pd.DataFrame()
+
             subset_embeddings = self.embeddings[indices]
             hits = util.semantic_search(query_embedding, subset_embeddings, top_k=min(100, len(indices)))
-            
-            # Map hit indices back to original dataframe indices
-            original_indices = [indices[hit['corpus_id']] for hit in hits[0]]
-            scores = [hit['score'] for hit in hits[0]]
-            
-            # Create a DataFrame of the results with their scores
-            results_df = self.media_df.loc[original_indices].copy()
-            results_df["score"] = scores
 
+            # Map hit indices back to the continuous range of df_to_search
+            final_indices = [indices[hit["corpus_id"]] for hit in hits[0]]
+            scores = [hit['score'] for hit in hits[0]]
+
+            results_df = df_to_search.iloc[final_indices].copy()
+            results_df["score"] = scores
         else:
             hits = util.semantic_search(query_embedding, self.embeddings, top_k=100)
-            indices = [hit['corpus_id'] for hit in hits[0]]
+            final_indices = [hit["corpus_id"] for hit in hits[0]]
             scores = [hit['score'] for hit in hits[0]]
-            results_df = self.media_df.loc[indices].copy()
+
+            results_df = df_to_search.iloc[final_indices].copy()
             results_df["score"] = scores
-        
-        # Sort by score and then paginate
+
+        # Sort and paginate as before
         sorted_df = results_df.sort_values(by="score", ascending=False)
         start_index = (page - 1) * page_size
         end_index = start_index + page_size
-        
+
         return sorted_df.iloc[start_index:end_index]
